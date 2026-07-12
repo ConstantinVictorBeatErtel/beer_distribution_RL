@@ -22,8 +22,12 @@ wrappers = [
     "pettingzoo>=1.24",
     "gymnasium>=0.29",
 ]
+marl = [
+    "torch>=2.0",
+    "pyyaml>=6.0",
+]
 all = [
-    "beer_distribution_rl[dev,wrappers]",
+    "beer_distribution_rl[dev,wrappers,marl]",
 ]
 
 [tool.setuptools.packages.find]

@@ -7,22 +7,33 @@ See [PROJECT_SPEC.md](PROJECT_SPEC.md) and [DECISIONS.md](DECISIONS.md).
 ## Install
 
 ```bash
-pip install -e ".[dev]"          # env + tests
-pip install -e ".[dev,wrappers]" # + PettingZoo / Gymnasium
+pip install -e ".[dev]"               # env + tests
+pip install -e ".[dev,wrappers]"      # + PettingZoo / Gymnasium
+pip install -e ".[dev,wrappers,marl]" # + PyTorch IPPO
 ```
 
-## Validation gate
+## Validation gate (M1)
 
 ```bash
 python scripts/validation_gate.py
 ```
 
-No training code until this gate passes (Sterman bullwhip + base-stock costs vs published baseline).
+## Tier-1 IPPO (M2)
+
+One policy + critic **per role** (no parameter sharing). Regime C shares only the system reward.
+
+```bash
+python scripts/train_ippo.py --config experiments/regime_a_classic.yaml --seed 0
+python scripts/train_ippo.py --config experiments/regime_c_classic.yaml --seed 0
+python scripts/eval_ippo.py --run-dir artifacts/runs/ippo/regimeA_seed0
+```
 
 ## Package layout
 
 ```
 beer_distribution_rl/
-  env/       # pure-Python core (no ML deps)
-  agents/    # baselines; IPPO/LLM arrive in later milestones
+  env/          # pure-Python core (no ML deps)
+  agents/
+    baselines.py
+    ippo/       # Independent PPO
 ```

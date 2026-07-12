@@ -32,3 +32,17 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 - Regimes A/B rewards: strictly local costs; no system-cost term, no cooperation shaping, no honesty reward.
 - Signaling: optional and unverified; honesty is measured, never rewarded.
 - Regime C (shared system reward) exists only as reproduction of arXiv:2605.17036.
+
+## M2 — IPPO
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Algorithm | Independent PPO (CleanRL-style), MLP 2×256 | Spec Tier 1; auditable; laptop-friendly |
+| Parameter sharing | Forbidden in A/B; also forbidden in C for M2 | Emergence claim; C only shares the *reward*, not weights |
+| Shared critic | Forbidden — one critic head per role | Spec non-negotiable |
+| M2 regimes | A and C only on classic step demand | Gate: cost ballpark vs Sterman/base-stock |
+| Regime B / capacity matrix | Deferred to M3 | Phase diagram before GPU spend |
+| Train timesteps (default YAML) | 150k | Laptop overnight-scale; override via CLI |
+| Action space | relative: order = clip(demand + Δ, 0, 64), Δ ∈ [-8, 8] | Tractable; matches DQN-beer-game surplus actions |
+| Reward scale | 0.1 (training only; logged costs unscaled) | Stabilizes value learning |
+| Reproducibility | YAML + seed + git SHA in `run_meta.json` | Spec §6 |
