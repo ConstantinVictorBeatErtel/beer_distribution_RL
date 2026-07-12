@@ -18,15 +18,19 @@ pip install -e ".[dev,wrappers,marl]" # + PyTorch IPPO
 python scripts/validation_gate.py
 ```
 
-## Tier-1 IPPO (M2)
-
-One policy + critic **per role** (no parameter sharing). Regime C shares only the system reward.
+## Tier-1 IPPO (M2–M3)
 
 ```bash
+# M2 classic anchors
 python scripts/train_ippo.py --config experiments/regime_a_classic.yaml --seed 0
 python scripts/train_ippo.py --config experiments/regime_c_classic.yaml --seed 0
-python scripts/eval_ippo.py --run-dir artifacts/runs/ippo/regimeA_seed0
+
+# M3 phase-diagram matrix (Regime B × capacity × rationing × seeds)
+python scripts/run_m3_matrix.py --skip-existing
+make figures
 ```
+
+One policy + critic **per role** (no parameter sharing). Regime C shares only the system reward. Regime B adds optional unverified signals.
 
 ## Package layout
 

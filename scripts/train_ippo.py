@@ -37,8 +37,8 @@ def main() -> int:
     args = p.parse_args()
 
     cfg = load_config(args.config, args.seed, args.total_timesteps)
-    if cfg.regime not in ("A", "C"):
-        print("ERROR: M2 only trains regimes A and C. Regime B waits for M3.")
+    if cfg.regime not in ("A", "B", "C"):
+        print(f"ERROR: unknown regime {cfg.regime}")
         return 2
     print(f"Training IPPO regime={cfg.regime} seed={cfg.seed} steps={cfg.total_timesteps}")
     trainer = IPPOTrainer(cfg)

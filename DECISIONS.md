@@ -41,8 +41,10 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Parameter sharing | Forbidden in A/B; also forbidden in C for M2 | Emergence claim; C only shares the *reward*, not weights |
 | Shared critic | Forbidden — one critic head per role | Spec non-negotiable |
 | M2 regimes | A and C only on classic step demand | Gate: cost ballpark vs Sterman/base-stock |
-| Regime B / capacity matrix | Deferred to M3 | Phase diagram before GPU spend |
-| Train timesteps (default YAML) | 150k | Laptop overnight-scale; override via CLI |
+| Regime B / capacity matrix | M3: Regime B × caps × rationing; relative claims; honesty measured only | Phase diagram before GPU spend |
+| M3 train timesteps (sweep default) | 50k / cell, ≥10 seeds on headline B cells | Laptop-feasible; extend later |
+| Serial rationing equivalence | On serial topology, prop/uniform/honesty-weighted coincide (one claimant) | P3 needs Y-topology; documented in M3_REPORT |
+| M3 matrix completed | B × 5 caps × 2 ration × 10 seeds × 50k steps | Phase diagram v1; P1 weak, P2 mixed, P3 N/A |
 | Action space | relative: order = clip(demand + Δ, 0, 64), Δ ∈ [-8, 8] | Tractable; matches DQN-beer-game surplus actions |
 | Reward scale | 0.1 (training only; logged costs unscaled) | Stabilizes value learning |
 | Reproducibility | YAML + seed + git SHA in `run_meta.json` | Spec §6 |

@@ -11,7 +11,7 @@ import torch
 @dataclass
 class RoleBuffer:
     obs: list[np.ndarray] = field(default_factory=list)
-    actions: list[int] = field(default_factory=list)
+    actions: list = field(default_factory=list)  # int or list[int] for multi-head
     logprobs: list[float] = field(default_factory=list)
     rewards: list[float] = field(default_factory=list)
     dones: list[bool] = field(default_factory=list)
@@ -51,9 +51,10 @@ class RoleBuffer:
         )
 
     def as_tensors(self) -> dict[str, torch.Tensor]:
+        acts = np.asarray(self.actions)
         return {
             "obs": torch.as_tensor(np.stack(self.obs), dtype=torch.float32),
-            "actions": torch.as_tensor(np.asarray(self.actions), dtype=torch.int64),
+            "actions": torch.as_tensor(acts, dtype=torch.int64),
             "logprobs": torch.as_tensor(np.asarray(self.logprobs), dtype=torch.float32),
             "values": torch.as_tensor(np.asarray(self.values), dtype=torch.float32),
         }

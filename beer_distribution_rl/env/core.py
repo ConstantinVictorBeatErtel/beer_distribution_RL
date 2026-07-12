@@ -164,6 +164,7 @@ class BeerGameCore:
         self._channel = SignalChannel(delay=1)
         self._honesty_ema: dict[Role, float] = {r: 0.0 for r in ROLES}
         self._terminated = False
+        self._last_signal_board: dict[Role, Signal | None] = {r: None for r in ROLES}
 
     @property
     def t(self) -> int:
@@ -183,6 +184,7 @@ class BeerGameCore:
         self._terminated = False
         self._honesty_ema = {r: 0.0 for r in ROLES}
         self._channel.reset()
+        self._last_signal_board = {r: None for r in ROLES}
         cfg = self.config
         self._states = {}
         for role in ROLES:
@@ -403,6 +405,7 @@ class BeerGameCore:
                     "honesty_ema": self._honesty_ema[r],
                 }
             signals_received = self._channel.receive()
+            self._last_signal_board = dict(signals_received[Role.RETAILER])
             self._channel.send(signals_sent)
         elif signals is not None and any(v is not None for v in signals.values()):
             # Signals provided but channel disabled — ignore (do not validate truth).

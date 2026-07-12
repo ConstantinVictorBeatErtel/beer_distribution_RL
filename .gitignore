@@ -22,6 +22,10 @@ artifacts/**/*.csv
 !artifacts/validation_gate/results.json
 !artifacts/validation_gate/config.yaml
 !artifacts/runs/ippo/M2_REPORT.md
+!artifacts/runs/ippo/m3/M3_REPORT.md
+!artifacts/runs/ippo/m3/index.json
+!artifacts/runs/ippo/m3/phase_summary.json
+!artifacts/runs/ippo/m3/*.png
 !artifacts/runs/ippo/**/run_meta.json
 !artifacts/runs/ippo/**/final_eval.json
 !artifacts/runs/ippo/**/comparison.json

@@ -22,9 +22,29 @@ def test_no_parameter_sharing():
     assert len({id(trainer.policies[r].actor_head) for r in ROLES}) == 4
 
 
-def test_regime_b_rejected():
-    with pytest.raises(ValueError, match="A and C"):
-        IPPOTrainer(IPPOConfig(regime="B", total_timesteps=100, rollout_steps=32))
+def test_regime_b_signaling_smoke(tmp_path):
+    cfg = IPPOConfig(
+        regime="B",
+        total_timesteps=2048,
+        rollout_steps=512,
+        update_epochs=2,
+        minibatch_size=128,
+        eval_every=1,
+        eval_episodes=2,
+        log_every=1,
+        seed=2,
+        demand="uniform",
+        capacity_mult=1.0,
+        rationing="proportional",
+        out_dir=str(tmp_path / "ippo"),
+        horizon=36,
+    )
+    trainer = IPPOTrainer(cfg)
+    assert trainer.signaling
+    out = trainer.train()
+    fe = __import__("json").loads((out / "final_eval.json").read_text())
+    assert "eval/honesty_score" in fe
+    assert "eval/sharing_rate" in fe
 
 
 def test_ippo_smoke_learns_finite_cost(tmp_path):
@@ -40,13 +60,15 @@ def test_ippo_smoke_learns_finite_cost(tmp_path):
         seed=1,
         out_dir=str(tmp_path / "ippo"),
         horizon=36,
+        demand="classic_step",
     )
     trainer = IPPOTrainer(cfg)
     out = trainer.train()
     assert (out / "checkpoints" / "policy_retailer.pt").exists()
     assert (out / "run_meta.json").exists()
     final = trainer.evaluate(n_episodes=5)
-    assert final["eval/mean_system_cost"] < 5000  # not exploded
+    assert final["eval/mean_system_cost"] < 5000
+  # not exploded
 
 
 def test_regime_c_uses_shared_reward_signal():
