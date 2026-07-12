@@ -1,0 +1,26 @@
+{
+  "base_stock_mean_cost_per_period": 5.4772,
+  "base_stock_std": 1.5459334938304878,
+  "base_stock_gate": [
+    4.5,
+    7.5
+  ],
+  "base_stock_pass": true,
+  "retailer_cost_share": 0.9518732198933761,
+  "shape_pass": true,
+  "sterman_dqn_config_mean": 1242.4173333333333,
+  "dominance_ratio_sterman_over_bs": 226.83439226855572,
+  "dominance_pass": true,
+  "published_reference_2_008": 2.008,
+  "ratio_vs_published": 2.7276892430278883,
+  "sterman_avg_bullwhip": {
+    "RETAILER": 114.50927734375001,
+    "WHOLESALER": 536.18115234375,
+    "DISTRIBUTOR": 611.7890625000001,
+    "FACTORY": 646.0
+  },
+  "sterman_seeds_factory_gt_retailer": 20,
+  "sterman_pass": true,
+  "overall_pass": true,
+  "git_sha": "UNKNOWN"
+}

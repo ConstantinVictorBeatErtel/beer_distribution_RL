@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "beer_distribution_rl"
+version = "0.1.0"
+description = "Emergent cooperation and deception in the Beer Distribution Game"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Consti Ertel" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "hypothesis>=6.90",
+    "pyyaml>=6.0",
+]
+wrappers = [
+    "pettingzoo>=1.24",
+    "gymnasium>=0.29",
+]
+all = [
+    "beer_distribution_rl[dev,wrappers]",
+]
+
+[tool.setuptools.packages.find]
+include = ["beer_distribution_rl*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

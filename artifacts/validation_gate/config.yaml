@@ -1,0 +1,14 @@
+base_stock_config: dqn_paper_env_config
+base_stock_gate_band:
+- 4.5
+- 7.5
+base_stock_levels:
+- 9
+- 5
+- 3
+- 1
+git_sha: UNKNOWN
+n_seeds_base_stock: 50
+n_seeds_sterman: 20
+published_reference_cost: 2.008
+sterman_classic: "classic_env_config step 4\u21928"
