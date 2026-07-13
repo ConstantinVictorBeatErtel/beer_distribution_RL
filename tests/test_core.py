@@ -18,10 +18,10 @@ from beer_distribution_rl.env.core import (
     ROLES,
     classic_env_config,
 )
-from beer_distribution_rl.env.demand import ClassicStepDemand, UniformDemand
+from beer_distribution_rl.env.demand import ClassicStepDemand, DEFAULT_ORDER_CAP, UniformDemand
 
 
-def _pass_through_orders(states, cap=64):
+def _pass_through_orders(states, cap=DEFAULT_ORDER_CAP):
     """Order exactly last incoming demand (pass-through)."""
     return {r: min(cap, max(0, states[r].last_demand_or_order)) for r in ROLES}
 
@@ -52,7 +52,7 @@ def test_order_clamp():
     env = BeerGameCore(classic_env_config(seed=0))
     env.reset(0)
     states, rewards, done, info = env.step({r: 999 for r in ROLES})
-    assert all(info.orders_placed[r] == 64 for r in ROLES)
+    assert all(info.orders_placed[r] == DEFAULT_ORDER_CAP for r in ROLES)
     assert all(info.orders_clamped[r] for r in ROLES)
     states, rewards, done, info = env.step({r: -3 for r in ROLES})
     assert all(info.orders_placed[r] == 0 for r in ROLES)
@@ -117,7 +117,9 @@ def test_delay_shipment_propagation():
     # Give wholesaler incoming by seeding — use order_delay and prior order.
 
     # Reset with order pipeline so wholesaler sees demand 10 on week 1
+    env._states[Role.WHOLESALER].order_pipelines = {Role.RETAILER: [10]}
     env._states[Role.WHOLESALER].order_pipeline = [10]
+    env._states[Role.WHOLESALER].claimant_backlog = {Role.RETAILER: 0}
     env._states[Role.WHOLESALER].inventory = 100
     env._states[Role.RETAILER].inventory = 0
     env._states[Role.RETAILER].ship_pipeline = [0, 0]
@@ -218,3 +220,176 @@ def test_golden_trajectory(tmp_path=None):
         pytest.skip("Wrote golden trajectory; re-run to verify")
     expected = json.loads(golden_path.read_text())
     assert traj == expected
+
+
+def _expected_on_order(env: BeerGameCore, role: Role) -> int:
+    """Outstanding replenishment: ship pipeline + upstream unfilled (serial)."""
+    st = env._states[role]
+    ship = sum(st.ship_pipeline)
+    if role == Role.FACTORY:
+        return ship
+    up_role = env.topology.upstream[role]
+    assert up_role is not None
+    up = env._states[up_role]
+    if role in up.order_pipelines:
+        in_transit = sum(up.order_pipelines[role])
+    else:
+        in_transit = sum(up.order_pipeline)
+    owed = int(up.claimant_backlog.get(role, 0)) if up.claimant_backlog else up.backlog
+    return ship + in_transit + owed
+
+
+def test_on_order_init_includes_order_delay_pipeline():
+    """B1 regression: on_order must count orders still in upstream order_pipeline."""
+    cfg = classic_env_config(
+        seed=0,
+        init_inventory=(12, 12, 12, 12),
+        init_pipeline_ship=4,
+        init_pipeline_order=4,
+        ship_delay=2,
+        order_delay=1,
+    )
+    env = BeerGameCore(cfg)
+    states = env.reset(0)
+    # Ship pipe sum = 8; non-factory also has 4 in upstream order pipe.
+    assert states[Role.FACTORY].on_order == 8
+    for role in (Role.RETAILER, Role.WHOLESALER, Role.DISTRIBUTOR):
+        assert states[role].on_order == 12, f"{role}: {states[role].on_order}"
+    # Retailer does not consume order_pipeline for incoming demand.
+    assert states[Role.RETAILER].order_pipeline == [0]
+
+
+def test_delay_unit_trace_classic_beer_game():
+    """B1: single-unit order at week 1 arrives with L_o=1, L_s=2 (receipt week 4)."""
+    cfg = EnvConfig(
+        horizon=8,
+        ship_delay=2,
+        order_delay=1,
+        demand=ClassicStepDemand(pre=0, post=0, switch_week=99),
+        init_inventory=(0, 100, 0, 0),
+        init_pipeline_ship=0,
+        init_pipeline_order=0,
+        capacity=None,
+        seed=0,
+    )
+    env = BeerGameCore(cfg)
+    env.reset(0)
+    for r in ROLES:
+        env._states[r].ship_pipeline = [0] * cfg.ship_delay
+        env._states[r].order_pipeline = [0] * cfg.order_delay
+        env._states[r].on_order = 0
+        env._states[r].inventory = 100 if r == Role.WHOLESALER else 0
+        env._states[r].backlog = 0
+        if env.topology.downstream[r]:
+            env._states[r].order_pipelines = {
+                c: [0] * cfg.order_delay for c in env.topology.downstream[r]
+            }
+            env._states[r].claimant_backlog = {c: 0 for c in env.topology.downstream[r]}
+        else:
+            env._states[r].order_pipelines = {}
+            env._states[r].claimant_backlog = {}
+
+    wholesaler_sees = wholesaler_ships = retailer_recv = None
+    for week in range(1, 7):
+        orders = {
+            Role.RETAILER: 1 if week == 1 else 0,
+            Role.WHOLESALER: 0,
+            Role.DISTRIBUTOR: 0,
+            Role.FACTORY: 0,
+        }
+        _, _, _, info = env.step(orders)
+        if info.incoming_orders[Role.WHOLESALER] == 1 and wholesaler_sees is None:
+            wholesaler_sees = week
+        if info.shipments[Role.WHOLESALER] == 1 and wholesaler_ships is None:
+            wholesaler_ships = week
+        if info.shipments_received[Role.RETAILER] == 1 and retailer_recv is None:
+            retailer_recv = week
+
+    assert wholesaler_sees == 2  # L_o = 1
+    assert wholesaler_ships == 2
+    assert retailer_recv == 4  # ship week 2 + L_s = 2
+
+
+def test_factory_production_delay():
+    """Factory production enters own ship pipeline and arrives after L_s weeks."""
+    cfg = EnvConfig(
+        horizon=6,
+        ship_delay=2,
+        order_delay=1,
+        demand=ClassicStepDemand(pre=0, post=0, switch_week=99),
+        init_inventory=(0, 0, 0, 0),
+        init_pipeline_ship=0,
+        init_pipeline_order=0,
+        seed=0,
+    )
+    env = BeerGameCore(cfg)
+    env.reset(0)
+    for r in ROLES:
+        env._states[r].ship_pipeline = [0] * cfg.ship_delay
+        env._states[r].order_pipeline = [0] * cfg.order_delay
+        env._states[r].on_order = 0
+        env._states[r].inventory = 0
+        env._states[r].backlog = 0
+        if env.topology.downstream[r]:
+            env._states[r].order_pipelines = {
+                c: [0] * cfg.order_delay for c in env.topology.downstream[r]
+            }
+            env._states[r].claimant_backlog = {c: 0 for c in env.topology.downstream[r]}
+        else:
+            env._states[r].order_pipelines = {}
+            env._states[r].claimant_backlog = {}
+
+    recv_week = None
+    for week in range(1, 6):
+        orders = {r: (1 if (r == Role.FACTORY and week == 1) else 0) for r in ROLES}
+        _, _, _, info = env.step(orders)
+        if info.shipments_received[Role.FACTORY] == 1:
+            recv_week = week
+            break
+    assert recv_week == 3
+
+
+@given(seed=st.integers(0, 8000), scale=st.integers(0, 40))
+@settings(max_examples=60, deadline=None)
+def test_property_on_order_invariant(seed, scale):
+    """on_order equals ship_pipeline + upstream outstanding for every week."""
+    rng = __import__("random").Random(seed)
+    env = BeerGameCore(
+        EnvConfig(horizon=20, demand=UniformDemand(0, 15), capacity=None, seed=seed)
+    )
+    env.reset(seed)
+    for r in ROLES:
+        assert env._states[r].on_order == _expected_on_order(env, r)
+    done = False
+    while not done:
+        orders = {r: rng.randint(0, scale) for r in ROLES}
+        _, _, done, _ = env.step(orders)
+        for r in ROLES:
+            assert env._states[r].on_order == _expected_on_order(env, r), (
+                f"t={env.t} role={r} got={env._states[r].on_order} "
+                f"exp={_expected_on_order(env, r)}"
+            )
+
+
+@given(seed=st.integers(0, 8000))
+@settings(max_examples=40, deadline=None)
+def test_property_goods_conservation(seed):
+    """init + cumulative production = physical stock + delivered to customers."""
+    rng = __import__("random").Random(seed)
+    env = BeerGameCore(
+        EnvConfig(horizon=25, demand=UniformDemand(0, 15), capacity=None, seed=seed)
+    )
+    env.reset(seed)
+    init_goods = sum(
+        env._states[r].inventory + sum(env._states[r].ship_pipeline) for r in ROLES
+    )
+    cum_prod = 0
+    cum_delivered = 0
+    done = False
+    while not done:
+        orders = {r: rng.randint(0, 64) for r in ROLES}
+        states, _, done, info = env.step(orders)
+        cum_prod += info.factory_production
+        cum_delivered += info.shipments[Role.RETAILER]
+        physical = sum(states[r].inventory + sum(states[r].ship_pipeline) for r in ROLES)
+        assert init_goods + cum_prod == physical + cum_delivered

@@ -96,6 +96,10 @@ class BeerGameParallelEnv(ParallelEnv):
 
     def _vector_obs(self, role: Role) -> dict:
         raw = self.core.observe(role)
+        # Local fields only. True consumer demand is retailer.last_demand_or_order;
+        # upstream roles see their own incoming order under the same key — never
+        # a privileged customer_demand field (information-asymmetry premise).
+        assert "customer_demand" not in raw
         return {
             "inventory": float(raw["inventory"]),
             "backlog": float(raw["backlog"]),

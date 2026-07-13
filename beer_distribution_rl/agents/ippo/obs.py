@@ -5,8 +5,16 @@ from __future__ import annotations
 import numpy as np
 
 from beer_distribution_rl.env.core import BeerGameCore, EnvConfig, Role, RoleState
-from beer_distribution_rl.env.core_types import ROLES
 from beer_distribution_rl.env.signals import Signal
+from beer_distribution_rl.env.topology import get_topology
+
+
+def _signal_roles(config: EnvConfig) -> tuple[Role, ...]:
+    """Roles that appear on the cheap-talk board (topology-dependent)."""
+    topo = config.topology
+    if isinstance(topo, str):
+        return get_topology(topo).roles
+    return topo.roles
 
 
 def obs_dim(config: EnvConfig) -> int:
@@ -15,7 +23,7 @@ def obs_dim(config: EnvConfig) -> int:
     base = 6 + config.ship_delay + config.order_delay + 3
     if config.signaling_enabled:
         # per role on delayed board: present, claimed_demand, claimed_inventory
-        base += 3 * len(ROLES)
+        base += 3 * len(_signal_roles(config))
     return base
 
 
@@ -47,8 +55,9 @@ def state_to_obs(state: RoleState, role: Role, core: BeerGameCore) -> np.ndarray
         float(costs.backlog),
     ]
     if cfg.signaling_enabled:
-        board = getattr(core, "_last_signal_board", None) or {r: None for r in ROLES}
-        for r in ROLES:
+        board_roles = core.roles
+        board = getattr(core, "_last_signal_board", None) or {r: None for r in board_roles}
+        for r in board_roles:
             feats.extend(_signal_feats(board.get(r)))
     expected = obs_dim(cfg)
     if len(feats) < expected:

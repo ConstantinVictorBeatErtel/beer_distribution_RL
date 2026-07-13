@@ -1,4 +1,21 @@
-"""Allocation / rationing mechanisms for capacity-constrained nodes."""
+"""Allocation / rationing mechanisms for capacity-constrained nodes.
+
+Why proportional / uniform / honesty-weighted are identical on a serial chain
+----------------------------------------------------------------------------
+On the classic 4-node serial topology each node has **exactly one claimant**
+(the single downstream role, or exogenous customer demand at the retailer).
+With a singleton ``requested`` map, every policy here returns
+``{claimant: min(available, need)}`` whenever supply is short — the weights
+never get a chance to differentiate. That is why D1/P3 (honesty-weighted vs
+proportional) was untestable before the Y-topology: two retailers under one
+wholesaler create a genuine multi-claimant allocation.
+
+Scientific constraint (non-negotiable)
+--------------------------------------
+``HonestyWeightedRationing`` changes **physical fill only**. It must never
+enter any agent's reward / objective. Honesty is measured and may reshape the
+environment dynamics; it is never rewarded. (Reward hacking if violated.)
+"""
 
 from __future__ import annotations
 
@@ -11,7 +28,10 @@ from beer_distribution_rl.env.core_types import Role
 
 @dataclass
 class RationContext:
-    """Optional context for honesty-weighted allocation."""
+    """Optional context for honesty-weighted allocation.
+
+    ``honesty_ema`` is diagnostic/mechanism state only — never a reward term.
+    """
 
     honesty_ema: Mapping[Role, float] = field(default_factory=dict)
     temperature: float = 1.0
@@ -38,29 +58,43 @@ def _identity_or_empty(requested: Mapping[Role, int], available: int) -> dict[Ro
 
 
 def _largest_remainder(raw: Mapping[Role, float], available: int, caps: Mapping[Role, int]) -> dict[Role, int]:
-    """Hamilton largest-remainder to convert fractional shares to ints."""
+    """Hamilton largest-remainder to convert fractional shares to ints.
+
+    Continues awarding remainder units while capacity remains and any claimant
+    is below their request cap (needed when honesty/proportional weights would
+    assign more than ``caps[r]`` to a role).
+    """
     floors = {r: min(caps[r], int(math.floor(raw[r]))) for r in raw}
     used = sum(floors.values())
     remaining = available - used
-    order = sorted(
-        raw.keys(),
-        key=lambda r: (raw[r] - math.floor(raw[r]), -int(r)),
-        reverse=True,
-    )
     out = dict(floors)
-    for r in order:
-        if remaining <= 0:
+    while remaining > 0:
+        order = sorted(
+            raw.keys(),
+            key=lambda r: (raw[r] - math.floor(raw[r]), -int(r)),
+            reverse=True,
+        )
+        progressed = False
+        for r in order:
+            if remaining <= 0:
+                break
+            if out[r] < caps[r]:
+                out[r] += 1
+                remaining -= 1
+                progressed = True
+        if not progressed:
             break
-        if out[r] < caps[r]:
-            out[r] += 1
-            remaining -= 1
-    # If still remaining but all at cap (shouldn't happen if sum(caps)>=available path), drop.
     return out
 
 
 @dataclass
 class ProportionalRationing:
-    """Allocate in proportion to requested amounts (classic shortage-gaming rule)."""
+    """Allocate in proportion to requested amounts (classic shortage-gaming rule).
+
+    Larger orders receive strictly more under shortage when requests differ and
+    both are below their caps after rounding — this is the Lee et al. incentive
+    to inflate. On a serial (single-claimant) node this collapses to identity fill.
+    """
 
     def allocate(
         self,
@@ -79,7 +113,11 @@ class ProportionalRationing:
 
 @dataclass
 class UniformRationing:
-    """Split available as evenly as possible (capped by request)."""
+    """Split available as evenly as possible (capped by request).
+
+    Ignores order size — removes the inflation incentive. Identical to
+    proportional on a serial single-claimant node.
+    """
 
     def allocate(
         self,
@@ -112,9 +150,12 @@ class UniformRationing:
 class HonestyWeightedRationing:
     """Weight ∝ exp(EMA / temperature); EMA is measured honesty (higher = more honest).
 
-    Does NOT enter the RL reward — only physical allocation.
+    Environment-dynamics mechanism only — does NOT enter the RL reward.
     ``honesty_ema`` values are expected on a scale where larger ⇒ more honest
     (core passes ``-mean_abs_error`` EMA, so less lying ⇒ larger / less-negative).
+
+    On a serial single-claimant node this is identical to proportional/uniform
+    (identity fill); multi-claimant Y-topology is required for P3.
     """
 
     def allocate(

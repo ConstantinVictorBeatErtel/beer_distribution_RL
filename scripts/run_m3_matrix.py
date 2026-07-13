@@ -43,7 +43,7 @@ def main() -> int:
     p.add_argument("--total-timesteps", type=int, default=50_000)
     p.add_argument("--rollout-steps", type=int, default=1024)
     p.add_argument("--horizon", type=int, default=52)
-    p.add_argument("--demand", default="uniform")
+    p.add_argument("--demand", default="ar1")
     p.add_argument("--out-dir", default="artifacts/runs/ippo/m3")
     p.add_argument("--skip-existing", action="store_true")
     args = p.parse_args()

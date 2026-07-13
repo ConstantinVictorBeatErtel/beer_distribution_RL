@@ -25,9 +25,14 @@ python scripts/validation_gate.py
 python scripts/train_ippo.py --config experiments/regime_a_classic.yaml --seed 0
 python scripts/train_ippo.py --config experiments/regime_c_classic.yaml --seed 0
 
-# M3 phase-diagram matrix (Regime B × capacity × rationing × seeds)
+# M3 phase-diagram matrix (Regime B × capacity × rationing × seeds) — legacy
 python scripts/run_m3_matrix.py --skip-existing
 make figures
+
+# Tier-1 v1.1 matrix (A/B/C × serial/y × caps × demands) — parallel + vec envs
+python scripts/run_tier1_matrix.py --dry-run          # show pruned cell count
+python scripts/run_tier1_matrix.py --workers 8 --n-envs 64 --skip-existing
+# Colab: notebooks/colab_tier1.ipynb (Drive-mounted, resumable)
 ```
 
 One policy + critic **per role** (no parameter sharing). Regime C shares only the system reward. Regime B adds optional unverified signals.
