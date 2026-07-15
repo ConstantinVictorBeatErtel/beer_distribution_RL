@@ -1,7 +1,7 @@
 # Recurrent IPPO baseline (memory-matched MLP)
 
-**Branch tip SHA (at report write):** `061aa59235397b7360c32a01cf4f98add0dd503a` (pre-commit; same as `main` branch point)  
-**Branched from main:** `061aa59235397b7360c32a01cf4f98add0dd503a`
+**Branch tip SHA:** `c56fc82f4def8d76e37611bd043cc9917bd9e7e7`  
+**Branched from main (`git rev-parse HEAD` at branch creation):** `061aa59235397b7360c32a01cf4f98add0dd503a`
 
 ## Architecture choice
 
