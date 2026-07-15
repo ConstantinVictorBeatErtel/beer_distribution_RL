@@ -80,3 +80,13 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Prompt 2 result | Channel **not** load-bearing; shuffles inert under det. eval | B scarcity gap largely eval-mode confound; see `v11_ablation.md` / `v11_bprime.md` |
 | Causal prior without B′ | Treat **B ≈ B′** as the supported framing | Babbling / negative-result writeup; do not claim information-flow advantage |
 | **M4 LLM gate** | **Not cleared** | No demonstrated load-bearing cheap-talk channel; revisit B′/M4 only after a checkpoint fails shuffle-time |
+
+## LLM-tier readiness (2026-07-15) — `preflight/llm-tier-readiness`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Baseline SHA | `061aa59235397b7360c32a01cf4f98add0dd503a` | `git rev-parse HEAD` at audit branch tip (= `main`) |
+| LLM action schema | **ORDER only** (cheap-talk / broadcast **dropped**) | Channel babbling + not load-bearing; shortage-gaming lives in the order stream (`analysis/shortage-gaming`) |
+| Context | Retain **structured own-history** across weeks | Design under audit; full history fits 32k; rolling window needed for **budget** |
+| **Overall readiness verdict** | **BLOCKED-ON-{product-text-I/O, parse-fail productization, memory-confound protocol, GRPO budget plan}** | Check 1 phenomenon **GO** (`supported`); Checks 2–3 product gaps; Check 5 floor GO-with-caution (3–4× base-stock, parse-fail ~30–40%); Check 7 full-hist GRPO over $250. Details: `artifacts/diagnostics/llm_tier_readiness.md` |
+| GRPO | **Not started** | $0 spend; no training code in this preflight |
