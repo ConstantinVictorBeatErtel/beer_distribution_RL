@@ -80,3 +80,9 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Prompt 2 result | Channel **not** load-bearing; shuffles inert under det. eval | B scarcity gap largely eval-mode confound; see `v11_ablation.md` / `v11_bprime.md` |
 | Causal prior without B′ | Treat **B ≈ B′** as the supported framing | Babbling / negative-result writeup; do not claim information-flow advantage |
 | **M4 LLM gate** | **Not cleared** | No demonstrated load-bearing cheap-talk channel; revisit B′/M4 only after a checkpoint fails shuffle-time |
+
+## Eval-mode blast radius (2026-07-15) — `diag/eval-mode-blast-radius`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Logged Tier-1 A−B scarcity gaps (28–53% and siblings from `final_eval` / `index.json`) | **RETRACTED** | Root cause: `IPPOTrainer.evaluate` uses `greedy=not self.signaling` — A/C argmax, B stochastic. Not a fair cross-regime compare. Corrected matched-deterministic table: `artifacts/diagnostics/eval_mode_blast_radius.md` (baseline SHA `061aa59235397b7360c32a01cf4f98add0dd503a`) |
