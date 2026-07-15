@@ -80,3 +80,16 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Prompt 2 result | Channel **not** load-bearing; shuffles inert under det. eval | B scarcity gap largely eval-mode confound; see `v11_ablation.md` / `v11_bprime.md` |
 | Causal prior without B′ | Treat **B ≈ B′** as the supported framing | Babbling / negative-result writeup; do not claim information-flow advantage |
 | **M4 LLM gate** | **Not cleared** | No demonstrated load-bearing cheap-talk channel; revisit B′/M4 only after a checkpoint fails shuffle-time |
+
+## Shortage gaming / order-stream pivot (2026-07-15) — `analysis/shortage-gaming`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Cheap-talk as strategic object | **Demoted** | `v11_signal_content`: babbling; ablation: channel not load-bearing |
+| Primary strategic object | **Order stream** under multi-claimant rationing (Y) | Orders costly; proportional rationing rewards claim inflation (Lee et al. 1997) |
+| Eval protocol | Matched-deterministic (`greedy=True`, seed+10k) | Same definition as eval-mode blast radius; no train/reward/env edits |
+| Inflation benchmark | Base-stock S=30 (sens. {9,22,30,45} + pass-through) | Installation stock for AR(1) μ=7.5, L=3 (BUGHUNT); not classic DQN S=9 |
+| Gaming label rule | Require response to **both** capacity tightness **and** rationing rule | Guard against mechanical / cap-128 artifacts |
+| Headline verdict | **`supported`** | B×Y×AR(1): gap(∞→0.8μ)=+8.80 under prop; mean prop−uniform @ tight = +6.79; serial scarcity Δ=−4.82 (no-rival control). Details: `artifacts/diagnostics/shortage_gaming.md` |
+| Rival externality | Weak / mixed | Share-based corr(Δorder,Δalloc) prop 0.24 vs uni 0.13 at 0.8μ — directional but not decisive |
+| Channel dependence | A ≈ B on Y×prop inflation | Gaming does not require the broadcast channel |
