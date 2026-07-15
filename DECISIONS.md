@@ -71,3 +71,12 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Bind event logs | `eval/frac_capacity_binds`, `eval/frac_allocation_triggers`, `week_events.json` | Closes D5 log gap (no checkpoint recompute) |
 | Artifacts | `config.yaml` + `run_meta.json` (seed, git SHA) per run | Spec §6 |
 | Runner | `scripts/run_tier1_matrix.py`; Colab: `notebooks/colab_tier1.ipynb` | Coffee-break target ≪15 min on Colab |
+
+## B′ control / M4 gate (2026-07-15) — `exp/bprime-control`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| B′ train matrix | **Skipped** (0 h / $0) | Prompt gate: only train B′ if Prompt 2 ablation shows channel plausibly load-bearing |
+| Prompt 2 result | Channel **not** load-bearing; shuffles inert under det. eval | B scarcity gap largely eval-mode confound; see `v11_ablation.md` / `v11_bprime.md` |
+| Causal prior without B′ | Treat **B ≈ B′** as the supported framing | Babbling / negative-result writeup; do not claim information-flow advantage |
+| **M4 LLM gate** | **Not cleared** | No demonstrated load-bearing cheap-talk channel; revisit B′/M4 only after a checkpoint fails shuffle-time |
