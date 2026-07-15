@@ -26,6 +26,7 @@ class ActorCritic(nn.Module):
         self.critic_body = _mlp(obs_dim, hidden)
         self.critic_head = nn.Linear(hidden, 1)
         self.signaling = False
+        self.recurrent = False
         self._init_order_bias()
 
     def _init_order_bias(self) -> None:
@@ -58,6 +59,83 @@ class ActorCritic(nn.Module):
         return dist.log_prob(actions), value, dist.entropy()
 
 
+class RecurrentActorCritic(nn.Module):
+    """Order-only actor-critic with a GRU over own local observations.
+
+    Memory-matched baseline for LLM agents that retain structured own-history
+    (Check 3 / Check 4 of llm_tier_readiness). Input each week is the same
+    local obs vector as the Markovian MLP (own inv/backlog/orders/pipelines
+    only — E1 no-leak). The GRU hidden state is the learned analogue of the
+    LLM's retained multi-week trajectory.
+    """
+
+    def __init__(
+        self,
+        obs_dim: int,
+        n_actions: int,
+        hidden: int = 256,
+        gru_hidden: int = 128,
+    ):
+        super().__init__()
+        self.signaling = False
+        self.recurrent = True
+        self.obs_dim = obs_dim
+        self.gru_hidden = gru_hidden
+        self.gru = nn.GRU(obs_dim, gru_hidden, batch_first=True)
+        self.actor_body = _mlp(gru_hidden, hidden)
+        self.actor_head = nn.Linear(hidden, n_actions)
+        self.critic_body = _mlp(gru_hidden, hidden)
+        self.critic_head = nn.Linear(hidden, 1)
+        self._init_order_bias()
+
+    def _init_order_bias(self) -> None:
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.orthogonal_(m.weight, gain=nn.init.calculate_gain("tanh"))
+                nn.init.zeros_(m.bias)
+        for name, p in self.gru.named_parameters():
+            if "weight" in name:
+                nn.init.orthogonal_(p)
+            elif "bias" in name:
+                nn.init.zeros_(p)
+        nn.init.orthogonal_(self.actor_head.weight, gain=0.01)
+        nn.init.orthogonal_(self.critic_head.weight, gain=1.0)
+        with torch.no_grad():
+            mid = self.actor_head.out_features // 2
+            self.actor_head.bias.zero_()
+            self.actor_head.bias[mid] = 1.0
+
+    def initial_hidden(self, batch: int, device: torch.device | None = None) -> torch.Tensor:
+        """Zero hidden state [1, B, H] (GRU num_layers=1)."""
+        return torch.zeros(1, batch, self.gru_hidden, device=device)
+
+    def forward(
+        self, obs: torch.Tensor, h: torch.Tensor
+    ) -> tuple[Categorical, torch.Tensor, torch.Tensor]:
+        """obs [B, D], h [1, B, H] → dist, value [B], h_new [1, B, H]."""
+        x = obs.unsqueeze(1)
+        out, h_new = self.gru(x, h)
+        feat = out.squeeze(1)
+        logits = self.actor_head(self.actor_body(feat))
+        value = self.critic_head(self.critic_body(feat)).squeeze(-1)
+        return Categorical(logits=logits), value, h_new
+
+    def act(
+        self, obs: torch.Tensor, h: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Returns (action [B], logprob [B], value [B], h_new)."""
+        dist, value, h_new = self.forward(obs, h)
+        action = dist.sample()
+        return action, dist.log_prob(action), value, h_new
+
+    def evaluate(
+        self, obs: torch.Tensor, actions: torch.Tensor, h: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Single-step BPTT with stored (detached) input hiddens."""
+        dist, value, _ = self.forward(obs, h)
+        return dist.log_prob(actions), value, dist.entropy()
+
+
 class SignalingActorCritic(nn.Module):
     """Order + optional cheap-talk heads (Regime B). Still one module per role."""
 
@@ -70,6 +148,7 @@ class SignalingActorCritic(nn.Module):
     ):
         super().__init__()
         self.signaling = True
+        self.recurrent = False
         self.actor_body = _mlp(obs_dim, hidden)
         self.order_head = nn.Linear(hidden, n_order)
         self.broadcast_head = nn.Linear(hidden, 2)

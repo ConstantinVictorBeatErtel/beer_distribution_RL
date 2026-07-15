@@ -155,6 +155,12 @@ def main() -> int:
     p.add_argument("--skip-existing", action="store_true")
     p.add_argument("--dry-run", action="store_true", help="print cell count and exit")
     p.add_argument(
+        "--recurrent",
+        action="store_true",
+        help="GRU memory-matched baseline (order-only; Regime A/C)",
+    )
+    p.add_argument("--gru-hidden", type=int, default=128)
+    p.add_argument(
         "--smoke",
         action="store_true",
         help="tiny timesteps / 1 seed for runner validation",
@@ -173,6 +179,9 @@ def main() -> int:
         args.n_envs = min(args.n_envs, 4)
         args.rollout_steps = min(args.rollout_steps, 64)
         args.workers = min(args.workers, 2)
+    if args.recurrent and any(r == "B" for r in regimes):
+        print("ERROR: --recurrent is order-only; drop Regime B from --regimes")
+        return 2
 
     summary = prune_summary(
         regimes=regimes,
@@ -204,6 +213,8 @@ def main() -> int:
                     "rollout_steps": args.rollout_steps,
                     "device": args.device,
                     "workers": args.workers,
+                    "recurrent": bool(args.recurrent),
+                    "gru_hidden": args.gru_hidden,
                 },
             },
             indent=2,
@@ -214,6 +225,7 @@ def main() -> int:
         f"Tier-1 matrix: {summary['kept']} cells "
         f"(pruned {summary['pruned']} of {summary['full_cartesian']}) "
         f"→ {out_dir}  workers={args.workers} n_envs={args.n_envs} device={args.device}"
+        f"{' recurrent=GRU' if args.recurrent else ''}"
     )
     print(f"  prune reasons: {summary['prune_reasons']}")
     if args.dry_run:
@@ -234,6 +246,8 @@ def main() -> int:
             device=args.device,
             out_dir=str(out_dir),
             run_name=cell.run_name,
+            recurrent=bool(args.recurrent),
+            gru_hidden=args.gru_hidden,
         )
         if args.skip_existing and _cell_done(out_dir, cell.run_name):
             # Still submit so index is refreshed from disk, or skip submit?

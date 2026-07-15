@@ -16,6 +16,8 @@ class RoleBuffer:
     rewards: list[float] = field(default_factory=list)
     dones: list[bool] = field(default_factory=list)
     values: list[float] = field(default_factory=list)
+    # Recurrent: input GRU hidden at each step, shape (gru_hidden,) — detached.
+    hiddens: list[np.ndarray] = field(default_factory=list)
 
     def clear(self) -> None:
         self.obs.clear()
@@ -24,6 +26,7 @@ class RoleBuffer:
         self.rewards.clear()
         self.dones.clear()
         self.values.clear()
+        self.hiddens.clear()
 
     def __len__(self) -> int:
         return len(self.rewards)
@@ -91,9 +94,12 @@ class RoleBuffer:
 
     def as_tensors(self) -> dict[str, torch.Tensor]:
         acts = np.asarray(self.actions)
-        return {
+        out: dict[str, torch.Tensor] = {
             "obs": torch.as_tensor(np.stack(self.obs), dtype=torch.float32),
             "actions": torch.as_tensor(acts, dtype=torch.int64),
             "logprobs": torch.as_tensor(np.asarray(self.logprobs), dtype=torch.float32),
             "values": torch.as_tensor(np.asarray(self.values), dtype=torch.float32),
         }
+        if self.hiddens:
+            out["hiddens"] = torch.as_tensor(np.stack(self.hiddens), dtype=torch.float32)
+        return out

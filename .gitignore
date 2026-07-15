@@ -26,6 +26,9 @@ artifacts/**/*.csv
 !artifacts/runs/ippo/m3/index.json
 !artifacts/runs/ippo/m3/phase_summary.json
 !artifacts/runs/ippo/m3/*.png
+!artifacts/runs/ippo/recurrent_baseline/index.json
+!artifacts/runs/ippo/recurrent_baseline/matrix_meta.json
+!artifacts/runs/ippo/recurrent_baseline/prune_summary.json
 !artifacts/runs/ippo/**/run_meta.json
 !artifacts/runs/ippo/**/final_eval.json
 !artifacts/runs/ippo/**/comparison.json

@@ -1,4 +1,19 @@
-"""Observation featurization for IPPO (local info only + delayed signals)."""
+"""Observation featurization for IPPO (local info only + delayed signals).
+
+Memory / information-set notes (Check 3 + Check 4, llm_tier_readiness):
+The flat local obs is the *per-week* content both the Markovian MLP and the
+recurrent GRU consume. Structured LLM history serializes the same own-only
+fields over weeks:
+
+  demand_or_incoming ← last_demand_or_order
+  ship_in / alloc_recv ← last_shipment_received
+  ordered ← last_order_placed
+  inv / backlog ← inventory, backlog
+  cost ← h·inv + b·backlog (coeffs also in obs)
+
+E1 no-leak: never includes other roles' true inventories or privileged
+customer_demand / true_demand keys for upstream agents.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +22,16 @@ import numpy as np
 from beer_distribution_rl.env.core import BeerGameCore, EnvConfig, Role, RoleState
 from beer_distribution_rl.env.signals import Signal
 from beer_distribution_rl.env.topology import get_topology
+
+# Check-3-aligned own-history fields present in every local obs (indices 0–5).
+OWN_HISTORY_CORE_FIELDS: tuple[str, ...] = (
+    "inventory",
+    "backlog",
+    "on_order",
+    "last_demand_or_order",  # demand / incoming observed this week
+    "last_shipment_received",  # ship_in / allocation received
+    "last_order_placed",  # own past order
+)
 
 
 def _signal_roles(config: EnvConfig) -> tuple[Role, ...]:

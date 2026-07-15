@@ -80,3 +80,12 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Prompt 2 result | Channel **not** load-bearing; shuffles inert under det. eval | B scarcity gap largely eval-mode confound; see `v11_ablation.md` / `v11_bprime.md` |
 | Causal prior without B′ | Treat **B ≈ B′** as the supported framing | Babbling / negative-result writeup; do not claim information-flow advantage |
 | **M4 LLM gate** | **Not cleared** | No demonstrated load-bearing cheap-talk channel; revisit B′/M4 only after a checkpoint fails shuffle-time |
+
+## Recurrent IPPO baseline (2026-07-15) — `baseline/recurrent-ippo`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| LLM-vs-MLP comparison | **Memory-matched** | Recurrent GRU IPPO retains own T=52 history matching planned LLM context (Check 4); removes memory confound from language-prior claims |
+| Recurrent architecture | GRU(obs→128) + 2×256 actor/critic per role | Preferred over frame-stack; fits R1 runner; E1 own-history only |
+| Headline cells | Regime A × {serial,Y} × {∞,1.0μ,0.8μ} × prop × AR(1) × 10 seeds (+ Y×uniform for gaming) | Order-only setting matching LLM channel drop |
+| Memory-only finding | GRU does **not** cut cost vs Markovian under matched budget; shortage gaming **survives** | See `artifacts/diagnostics/recurrent_baseline.md` |

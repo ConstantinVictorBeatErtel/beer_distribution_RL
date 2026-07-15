@@ -15,7 +15,11 @@ import torch.nn as nn
 import yaml
 
 from beer_distribution_rl.agents.ippo.buffer import RoleBuffer
-from beer_distribution_rl.agents.ippo.networks import ActorCritic, SignalingActorCritic
+from beer_distribution_rl.agents.ippo.networks import (
+    ActorCritic,
+    RecurrentActorCritic,
+    SignalingActorCritic,
+)
 from beer_distribution_rl.agents.ippo.obs import obs_dim, state_to_obs
 from beer_distribution_rl.agents.ippo.vec_env import SyncBeerGameVecEnv
 from beer_distribution_rl.env.core import (
@@ -78,6 +82,9 @@ class IPPOConfig:
     out_dir: str = "artifacts/runs/ippo"
     run_name: str | None = None
     boundary_warn_frac: float = 0.05
+    # Recurrent (memory-matched) baseline: GRU over local obs; False = Markovian MLP.
+    recurrent: bool = False
+    gru_hidden: int = 128
 
 
 def _make_rationing(name: str):
@@ -179,12 +186,22 @@ class IPPOTrainer:
         self.n_claim = 2 * cfg.claim_delta_max + 1
         self.obs_dim = obs_dim(self.env_config)
         self.signaling = cfg.regime == "B"
+        self.recurrent = bool(cfg.recurrent)
+        if self.recurrent and self.signaling:
+            raise ValueError(
+                "recurrent=True is order-only (Regime A/C); Regime B signaling+GRU "
+                "is out of scope for the memory-matched LLM baseline"
+            )
 
         self.policies: dict[Role, nn.Module] = {}
         for r in self.roles:
             if self.signaling:
                 self.policies[r] = SignalingActorCritic(
                     self.obs_dim, self.n_order, self.n_claim, cfg.hidden
+                ).to(self.device)
+            elif self.recurrent:
+                self.policies[r] = RecurrentActorCritic(
+                    self.obs_dim, self.n_order, cfg.hidden, cfg.gru_hidden
                 ).to(self.device)
             else:
                 self.policies[r] = ActorCritic(self.obs_dim, self.n_order, cfg.hidden).to(
@@ -200,6 +217,13 @@ class IPPOTrainer:
         self.update_idx = 0
         self.history: list[dict[str, Any]] = []
         self._bootstrap: dict[Role, float] = {}
+        # Per-role GRU state for the live vec-env batch (reset on episode done).
+        self._hiddens: dict[Role, torch.Tensor] = {}
+        if self.recurrent:
+            for r in self.roles:
+                pol = self.policies[r]
+                assert isinstance(pol, RecurrentActorCritic)
+                self._hiddens[r] = pol.initial_hidden(self.vec.n_envs, self.device)
 
     def _assert_independent_params(self) -> None:
         ids = []
@@ -231,7 +255,13 @@ class IPPOTrainer:
         claimed_i = max(0, min(self.cfg.order_cap * 2, int(state.inventory) + i_delta))
         return Signal(claimed_demand=claimed_d, claimed_inventory=claimed_i)
 
-    def _policy_act(self, role: Role, ot: torch.Tensor, greedy: bool = False):
+    def _policy_act(
+        self,
+        role: Role,
+        ot: torch.Tensor,
+        greedy: bool = False,
+        h: torch.Tensor | None = None,
+    ):
         pol = self.policies[role]
         if self.signaling:
             if greedy:
@@ -239,11 +269,32 @@ class IPPOTrainer:
                 _, value = None, pol._dists(ot)[4]  # type: ignore[attr-defined]
                 return actions, torch.zeros(ot.shape[0], device=self.device), value
             return pol.act(ot)
+        if self.recurrent:
+            assert h is not None
+            assert isinstance(pol, RecurrentActorCritic)
+            if greedy:
+                dist, value, h_new = pol.forward(ot, h)
+                a = dist.probs.argmax(dim=-1)
+                return a, dist.log_prob(a), value, h_new
+            return pol.act(ot, h)
         if greedy:
             dist, value = pol.forward(ot)  # type: ignore[attr-defined]
             a = dist.probs.argmax(dim=-1)
             return a, dist.log_prob(a), value
         return pol.act(ot)
+
+    def _reset_hiddens(self, dones: np.ndarray | list[bool] | None = None) -> None:
+        """Zero GRU state for finished envs (or all envs if dones is None)."""
+        if not self.recurrent:
+            return
+        for r in self.roles:
+            h = self._hiddens[r]
+            if dones is None:
+                h.zero_()
+            else:
+                for i, d in enumerate(dones):
+                    if d:
+                        h[:, i, :] = 0.0
 
     def collect_rollout(self) -> dict[str, float]:
         cfg = self.cfg
@@ -252,6 +303,7 @@ class IPPOTrainer:
             b.clear()
 
         states_list = self.vec.reset(cfg.seed + self.global_step)
+        self._reset_hiddens()
         ep_system_costs: list[float] = []
         ep_cost_acc = np.zeros(n_envs, dtype=np.float64)
         ep_len = np.zeros(n_envs, dtype=np.int32)
@@ -266,6 +318,7 @@ class IPPOTrainer:
             logprobs: dict[Role, list[float]] = {r: [] for r in self.roles}
             values: dict[Role, list[float]] = {r: [] for r in self.roles}
             obs_np: dict[Role, list[np.ndarray]] = {r: [] for r in self.roles}
+            h_np: dict[Role, list[np.ndarray]] = {r: [] for r in self.roles}
 
             with torch.no_grad():
                 for r in self.roles:
@@ -276,7 +329,16 @@ class IPPOTrainer:
                         ]
                     )
                     ot = torch.as_tensor(obs_stack, device=self.device)
-                    a, lp, val = self._policy_act(r, ot, greedy=False)
+                    if self.recurrent:
+                        h_in = self._hiddens[r]
+                        # Store input hiddens (pre-step) for single-step BPTT.
+                        h_store = h_in.squeeze(0).detach().cpu().numpy()
+                        out = self._policy_act(r, ot, greedy=False, h=h_in)
+                        a, lp, val, h_new = out  # type: ignore[misc]
+                        self._hiddens[r] = h_new.detach()
+                    else:
+                        a, lp, val = self._policy_act(r, ot, greedy=False)  # type: ignore[misc]
+                        h_store = None
                     lp_np = lp.detach().cpu().numpy()
                     val_np = val.detach().cpu().numpy()
                     if self.signaling:
@@ -302,6 +364,8 @@ class IPPOTrainer:
                             stored[r].append(idx)
                             logprobs[r].append(float(lp_np[i]))
                             values[r].append(float(val_np[i]))
+                            if h_store is not None:
+                                h_np[r].append(h_store[i].copy())
                             orders_batch[i][r] = self._decode_order(idx, states_list[i][r])
 
             states_list, rewards, dones, infos = self.vec.step(orders_batch, signals_batch)
@@ -318,11 +382,16 @@ class IPPOTrainer:
                     self.buffers[r].rewards.append(float(rewards[i][r]) * cfg.reward_scale)
                     self.buffers[r].dones.append(bool(dones[i]))
                     self.buffers[r].values.append(values[r][i])
+                    if self.recurrent:
+                        self.buffers[r].hiddens.append(h_np[r][i])
                 if dones[i]:
                     ep_system_costs.append(float(ep_cost_acc[i] / max(int(ep_len[i]), 1)))
                     ep_cost_acc[i] = 0.0
                     ep_len[i] = 0
                     states_list[i] = self.vec.reset_one(i, cfg.seed + self.global_step + i)
+
+            # Reset GRU state for finished envs before the next observation.
+            self._reset_hiddens(dones)
 
         self._bootstrap = {}
         with torch.no_grad():
@@ -336,6 +405,10 @@ class IPPOTrainer:
                 ot = torch.as_tensor(obs_stack, device=self.device)
                 if self.signaling:
                     v = self.policies[r]._dists(ot)[4]  # type: ignore
+                elif self.recurrent:
+                    pol = self.policies[r]
+                    assert isinstance(pol, RecurrentActorCritic)
+                    _, v, _ = pol.forward(ot, self._hiddens[r])
                 else:
                     _, v = self.policies[r].forward(ot)  # type: ignore
                 self._bootstrap[r] = v.detach().cpu().numpy().astype(np.float32)
@@ -377,6 +450,7 @@ class IPPOTrainer:
             advantages = advantages.to(self.device)
             returns = returns.to(self.device)
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+            hiddens = data["hiddens"].to(self.device) if self.recurrent else None
 
             n = len(buf)
             inds = np.arange(n)
@@ -388,9 +462,17 @@ class IPPOTrainer:
                 for start in range(0, n, cfg.minibatch_size):
                     mb = inds[start : start + cfg.minibatch_size]
                     mb_t = torch.as_tensor(mb, device=self.device)
-                    new_logprob, value, entropy = self.policies[r].evaluate(
-                        obs[mb_t], actions[mb_t]
-                    )
+                    if self.recurrent:
+                        assert hiddens is not None
+                        # hiddens stored as [N, H]; GRU wants [1, mb, H]
+                        h_mb = hiddens[mb_t].unsqueeze(0).detach()
+                        new_logprob, value, entropy = self.policies[r].evaluate(
+                            obs[mb_t], actions[mb_t], h_mb
+                        )
+                    else:
+                        new_logprob, value, entropy = self.policies[r].evaluate(
+                            obs[mb_t], actions[mb_t]
+                        )
                     ratio = (new_logprob - old_logprobs[mb_t]).exp()
                     adv = advantages[mb_t]
                     pg1 = ratio * adv
@@ -444,6 +526,13 @@ class IPPOTrainer:
             mae_sum = 0.0
             mae_n = 0
             steps = 0
+            # Matched-deterministic eval: carry GRU state across weeks; reset per episode.
+            eval_h: dict[Role, torch.Tensor] = {}
+            if self.recurrent:
+                for r in self.roles:
+                    pol = self.policies[r]
+                    assert isinstance(pol, RecurrentActorCritic)
+                    eval_h[r] = pol.initial_hidden(1, self.device)
             while not done:
                 orders: dict[Role, int] = {}
                 signals: dict[Role, Signal | None] | None = {} if self.signaling else None
@@ -452,7 +541,14 @@ class IPPOTrainer:
                         o = torch.as_tensor(
                             self._obs(states, r, self.core), device=self.device
                         ).unsqueeze(0)
-                        a, _, _ = self._policy_act(r, o, greedy=not self.signaling)
+                        if self.recurrent:
+                            out = self._policy_act(
+                                r, o, greedy=not self.signaling, h=eval_h[r]
+                            )
+                            a, _, _, h_new = out  # type: ignore[misc]
+                            eval_h[r] = h_new
+                        else:
+                            a, _, _ = self._policy_act(r, o, greedy=not self.signaling)
                         if self.signaling:
                             row = a.squeeze(0).cpu().numpy().astype(int)
                             orders[r] = self._decode_order(int(row[0]), states[r])
@@ -573,6 +669,8 @@ class IPPOTrainer:
             "obs_dim": self.obs_dim,
             "n_order": self.n_order,
             "signaling": self.signaling,
+            "recurrent": self.recurrent,
+            "gru_hidden": cfg.gru_hidden if self.recurrent else None,
             "capacity": self.env_config.capacity,
             "topology": self.core.topology.name,
             "roles": [self.core.role_names[r] for r in self.roles],

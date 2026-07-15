@@ -71,6 +71,61 @@ def test_ippo_smoke_learns_finite_cost(tmp_path):
   # not exploded
 
 
+def test_recurrent_ippo_smoke_and_independence(tmp_path):
+    """GRU baseline: one policy/critic per role; finite cost; hidden resets."""
+    from beer_distribution_rl.agents.ippo.networks import RecurrentActorCritic
+    from beer_distribution_rl.agents.ippo.obs import OWN_HISTORY_CORE_FIELDS
+
+    assert "last_demand_or_order" in OWN_HISTORY_CORE_FIELDS
+    assert "last_shipment_received" in OWN_HISTORY_CORE_FIELDS
+    assert "last_order_placed" in OWN_HISTORY_CORE_FIELDS
+
+    cfg = IPPOConfig(
+        regime="A",
+        recurrent=True,
+        gru_hidden=64,
+        total_timesteps=2048,
+        rollout_steps=256,
+        n_envs=4,
+        update_epochs=2,
+        minibatch_size=128,
+        eval_every=1,
+        eval_episodes=2,
+        log_every=1,
+        seed=3,
+        out_dir=str(tmp_path / "ippo_rec"),
+        horizon=36,
+        demand="ar1",
+        topology="y",
+        capacity_mult=1.0,
+        rationing="proportional",
+    )
+    trainer = IPPOTrainer(cfg)
+    assert trainer.recurrent
+    for r in trainer.roles:
+        assert isinstance(trainer.policies[r], RecurrentActorCritic)
+    params = []
+    for r in trainer.roles:
+        params.extend([id(p) for p in trainer.policies[r].parameters()])
+    assert len(params) == len(set(params))
+    assert len({id(trainer.policies[r].critic_head) for r in trainer.roles}) == len(
+        trainer.roles
+    )
+
+    out = trainer.train()
+    meta = __import__("json").loads((out / "run_meta.json").read_text())
+    assert meta["recurrent"] is True
+    assert meta["independent_policies"] is True
+    assert meta["shared_critic"] is False
+    fe = __import__("json").loads((out / "final_eval.json").read_text())
+    assert fe["eval/mean_system_cost"] < 50_000
+
+
+def test_recurrent_rejects_regime_b():
+    with pytest.raises(ValueError, match="order-only"):
+        IPPOTrainer(IPPOConfig(regime="B", recurrent=True, total_timesteps=100))
+
+
 def test_regime_c_uses_shared_reward_signal():
     """Regime C: all roles receive identical reward each step (system cost)."""
     from beer_distribution_rl.env.core import BeerGameCore, classic_env_config
