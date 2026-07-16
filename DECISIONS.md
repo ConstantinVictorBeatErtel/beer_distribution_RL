@@ -110,3 +110,17 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Per-prompt tokens @ W=8 | **~538 mean / 540 max** (chars/4) | ≪ Qwen2.5-3B 32k; persistence PASS on T=52 |
 | GRPO budget (projection) | **~$89** after ×**1/(1−p)=1.00** (p=0 from `llm_text_io.md`) | 9 cells × 50 upd × G=4 × measured W8 tokens × 4090 @$0.50/hr; fits $250 w/ margin; **$0 spent / no GRPO** |
 | E1 | Own history only in prompt | No other-role private state; leak hits 0 |
+
+## LLM-tier readiness v2 (2026-07-15) — `preflight/llm-tier-readiness-v2`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Baseline SHA | `76ce8a1f978f39c88667b518240d5187879de13e` | `git rev-parse HEAD` at branch tip (= `main` after recurrent-baseline + text-I/O + rolling-context merges) |
+| Blocker 2 (text I/O) | **GO** | Product serializer+parser; parse-fail **0%** uniform cap×role (`llm_text_io.md`) |
+| Blocker 3 (context) | **GO** | Rolling W=8 productized; T=52 persistence PASS; ~538 tok ≪ 32k (`llm_rolling_context.md`) |
+| Blocker 4 (memory) | **GO** | Recurrent IPPO baseline exists; shared own-history info set; LLM W=8 not strictly more memory than GRU (`recurrent_baseline.md`) |
+| Blocker 7 (budget) | **GO** | Corrected W=8 × 1.00 resampling ≈ **$89** / 9 cells fits $250 (`LEDGER.md`) |
+| Non-negotiables | **GO** | One LoRA/role; local-cost GRPO scalar; no B signaling; no C system reward |
+| **Overall readiness verdict** | **READY-FOR-FIRST-GRPO-CELL** | All v1 blockers cleared; details: `artifacts/diagnostics/llm_tier_readiness_v2.md` |
+| First cell (SPEC only) | Y × Regime A order-only × **1.0μ** × prop × AR(1) × **3 seeds** × Qwen2.5-3B × LoRA/role × W=8 × G=4 × 50 upd | Smallest probe of RL vs order-signal/shortage-gaming; est. **~$30** (3/9 of $89); kill if no RL signal / collapse / protocol breach |
+| GRPO | **Not started** | $0 this audit; launch only after human review |
