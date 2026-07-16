@@ -100,3 +100,13 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Decoding | **JSON-schema constrained** (Ollama `format` / GBNF twin for vLLM); resample≤3 logged | Check 5 regex parse-fail 30–39% → **0%** uniform across cap×role; see `llm_text_io.md` |
 | Resampling multiplier | **1.00** (= 1/(1−p) at p=0) | Feeds corrected GRPO budget; drop ~1.5× parse tax from Check 7 drafts |
 | Spend on this branch | **$0** / no GRPO | Inference-only local Qwen2.5-3B smoke |
+
+## LLM rolling context (2026-07-15) — `feat/llm-rolling-context`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Context retention | **Rolling own-history window W=8** (`DEFAULT_ROLLING_WINDOW`) | Clears readiness blockers 3+7; full history fits 32k but GRPO full-hist ~$870 over $250; W=8 ≈$89 corrected |
+| Ablation knob | `AgentMemory.window` / `serialize_prompt(window=)` | One-line W-sensitivity later (mirrors recurrent “does memory help?”) |
+| Per-prompt tokens @ W=8 | **~538 mean / 540 max** (chars/4) | ≪ Qwen2.5-3B 32k; persistence PASS on T=52 |
+| GRPO budget (projection) | **~$89** after ×**1/(1−p)=1.00** (p=0 from `llm_text_io.md`) | 9 cells × 50 upd × G=4 × measured W8 tokens × 4090 @$0.50/hr; fits $250 w/ margin; **$0 spent / no GRPO** |
+| E1 | Own history only in prompt | No other-role private state; leak hits 0 |

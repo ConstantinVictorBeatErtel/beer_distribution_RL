@@ -45,16 +45,21 @@ def serialize_prompt(
     holding: float,
     backlog_cost: float,
     delta_max: int = 8,
+    window: int | None = None,
 ) -> str:
-    """Render an agent's own observation (+ retained own history) as text.
+    """Render an agent's own observation (+ rolling own history) as text.
 
     Emits exactly the memory-matched information set (own past orders, demand
-    observed, allocations received, backlog, pipelines). Never emits other
-    agents' private state or privileged demand keys (E1).
+    observed, allocations received, backlog, pipelines) over a rolling window
+    of the last ``W`` weeks (default ``memory.window``, typically 8). Never
+    emits other agents' private state or privileged demand keys (E1).
     """
     for key in OWN_HISTORY_FIELDS:
         if key not in obs:
             raise KeyError(f"obs missing required field {key!r}")
+
+    hist = memory.windowed_history(window)
+    w_eff = memory.window if window is None else window
 
     lines = [
         f"You are the {memory.role_name} in a beer distribution supply chain.",
@@ -84,12 +89,12 @@ def serialize_prompt(
         f"ship_pipeline={obs['ship_pipeline']}",
         f"order_pipeline={obs['order_pipeline']}",
         "",
-        "Own history (prior weeks):",
+        f"Own history (rolling last W={w_eff} weeks):",
     ]
-    if not memory.history:
-        lines.append("(none — first week)")
+    if not hist:
+        lines.append("(none — first week or empty window)")
     else:
-        for rec in memory.history:
+        for rec in hist:
             lines.append(
                 f"  week={rec.week}: demand_or_incoming={rec.demand_or_incoming}, "
                 f"ship_in={rec.ship_in}, ordered={rec.ordered}, "
@@ -103,6 +108,11 @@ def serialize_prompt(
     lines.append("")
     lines.append('{"delta":')
     return "\n".join(lines)
+
+
+def estimate_prompt_tokens(prompt: str) -> int:
+    """Cheap token estimate (chars/4) — matches Check 3 / readiness audit."""
+    return max(1, len(prompt) // 4)
 
 
 def prompt_leak_report(prompt: str, role: Role, core: BeerGameCore) -> list[str]:
