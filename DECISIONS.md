@@ -89,3 +89,14 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Recurrent architecture | GRU(obs→128) + 2×256 actor/critic per role | Preferred over frame-stack; fits R1 runner; E1 own-history only |
 | Headline cells | Regime A × {serial,Y} × {∞,1.0μ,0.8μ} × prop × AR(1) × 10 seeds (+ Y×uniform for gaming) | Order-only setting matching LLM channel drop |
 | Memory-only finding | GRU does **not** cut cost vs Markovian under matched budget; shortage gaming **survives** | See `artifacts/diagnostics/recurrent_baseline.md` |
+
+## LLM text I/O (2026-07-15) — `feat/llm-text-io`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Product path | `beer_distribution_rl/agents/llm/` | Clears readiness blocker 2; provisional smoke harness is not a substitute |
+| Information set | Own history only (Check 3 / recurrent match); order-only (no cheap talk) | E1 no-leak in text; apples-to-apples vs GRU baseline |
+| Action emit | Relative Δ ∈ [-8, 8] → clip(demand+Δ, 0, 128) | IPPO parity (DECISIONS M2 / Check 0) |
+| Decoding | **JSON-schema constrained** (Ollama `format` / GBNF twin for vLLM); resample≤3 logged | Check 5 regex parse-fail 30–39% → **0%** uniform across cap×role; see `llm_text_io.md` |
+| Resampling multiplier | **1.00** (= 1/(1−p) at p=0) | Feeds corrected GRPO budget; drop ~1.5× parse tax from Check 7 drafts |
+| Spend on this branch | **$0** / no GRPO | Inference-only local Qwen2.5-3B smoke |
