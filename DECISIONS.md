@@ -152,3 +152,13 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Decision | Default | Rationale |
 |---|---|---|
 | Logged Tier-1 A−B scarcity gaps (28–53% and siblings from `final_eval` / `index.json`) | **RETRACTED** | Root cause: `IPPOTrainer.evaluate` uses `greedy=not self.signaling` — A/C argmax, B stochastic. Not a fair cross-regime compare. Corrected matched-deterministic table: `artifacts/diagnostics/eval_mode_blast_radius.md` (baseline SHA `061aa59235397b7360c32a01cf4f98add0dd503a`) |
+
+## LLM-tier readiness (2026-07-15) — `preflight/llm-tier-readiness`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Baseline SHA | `061aa59235397b7360c32a01cf4f98add0dd503a` | `git rev-parse HEAD` at audit branch tip (= `main`) |
+| LLM action schema | **ORDER only** (cheap-talk / broadcast **dropped**) | Channel babbling + not load-bearing; shortage-gaming lives in the order stream (`analysis/shortage-gaming`) |
+| Context | Retain **structured own-history** across weeks | Design under audit; full history fits 32k; rolling window needed for **budget** |
+| **Overall readiness verdict** | **BLOCKED-ON-{product-text-I/O, parse-fail productization, memory-confound protocol, GRPO budget plan}** | Check 1 phenomenon **GO** (`supported`); Checks 2–3 product gaps; Check 5 floor GO-with-caution (3–4× base-stock, parse-fail ~30–40%); Check 7 full-hist GRPO over $250. Details: `artifacts/diagnostics/llm_tier_readiness.md` |
+| GRPO | **Not started** | $0 spend; no training code in this preflight |
