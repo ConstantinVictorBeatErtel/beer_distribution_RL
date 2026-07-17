@@ -162,3 +162,11 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Context | Retain **structured own-history** across weeks | Design under audit; full history fits 32k; rolling window needed for **budget** |
 | **Overall readiness verdict** | **BLOCKED-ON-{product-text-I/O, parse-fail productization, memory-confound protocol, GRPO budget plan}** | Check 1 phenomenon **GO** (`supported`); Checks 2–3 product gaps; Check 5 floor GO-with-caution (3–4× base-stock, parse-fail ~30–40%); Check 7 full-hist GRPO over $250. Details: `artifacts/diagnostics/llm_tier_readiness.md` |
 | GRPO | **Not started** | $0 spend; no training code in this preflight |
+
+## M4 capability-floor smoke — Qwen2.5-3B (2026-07-17) — `scripts/run_llm_episode.py`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Capability floor (Qwen2.5-3B, greedy, JSON-schema decode) | **NOT CLEARED** | Colab smoke, T=52: parse-fail 0% both cells, but mean order collapses toward 0 (classic 0.38/0.08/0.0/0.0; y_tight 1.88/1.77/0.87/0.31/0.02) instead of tracking demand. Classic system cost 3.5× the naive demand-matching baseline (9636 vs 2768); y_tight ≈ parity but via backlog spiral, not real ordering. |
+| Action on floor failure | **Do not launch GRPO on 3B** | PROJECT_SPEC §4 Tier-2: "if the base model can't play coherently zero-shot, results at that size are uninterpretable — move up a size." Re-run the same free smoke on 7B (or an alt. base model) before any paid step. |
+| Spend | **$0** | Colab free-tier T4; no GPU rental used |
