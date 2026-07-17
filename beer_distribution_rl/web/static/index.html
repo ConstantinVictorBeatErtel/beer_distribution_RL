@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beer Game Spectator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="top">
+      <div class="brand">
+        <p class="eyebrow">Beer Distribution Game</p>
+        <h1>Live Spectator</h1>
+        <div class="scenario">
+          <span id="topology-label">Y topology</span>
+          <span id="demand-model">Correlated Y demand</span>
+        </div>
+      </div>
+      <div class="meters" aria-live="polite">
+        <div class="meter">
+          <span class="label">Week</span>
+          <span class="value" id="week">0</span>
+          <span class="sub" id="horizon">/ 52</span>
+        </div>
+        <div class="meter">
+          <span class="label">Total demand</span>
+          <span class="value" id="demand">—</span>
+          <span class="demand-change" id="demand-change"></span>
+        </div>
+        <div class="meter">
+          <span class="label">Week cost</span>
+          <span class="value" id="week-cost">0.0</span>
+        </div>
+        <div class="meter">
+          <span class="label">Cumulative cost</span>
+          <span class="value" id="cum-cost">0.0</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="board y-board" aria-label="Y supply chain">
+      <div class="y-customers">
+        <div class="demand-card" id="demand-a-card">
+          <span class="customer-label">Customers A</span>
+          <span class="flow-qty" id="demand-a">—</span>
+          <span class="flow-name">demand</span>
+        </div>
+        <div class="demand-card" id="demand-b-card">
+          <span class="customer-label">Customers B</span>
+          <span class="flow-qty" id="demand-b">—</span>
+          <span class="flow-name">demand</span>
+        </div>
+      </div>
+
+      <div class="y-retailers" id="retailers"></div>
+
+      <div class="y-fork">
+        <div class="fork-edge" data-edge="retailer_a"></div>
+        <div class="fork-edge" data-edge="retailer_b"></div>
+      </div>
+
+      <div class="y-trunk" id="trunk"></div>
+    </section>
+
+    <section class="chart-panel" aria-label="Order history">
+      <div class="chart-head">
+        <div>
+          <h2>Orders and customer demand</h2>
+          <p class="chart-note">Solid lines are player orders; dashed lines are each retailer’s customer demand.</p>
+        </div>
+        <ul class="legend" id="legend"></ul>
+      </div>
+      <canvas id="order-chart" width="960" height="220"></canvas>
+    </section>
+
+    <footer class="controls">
+      <div class="btn-row">
+        <button type="button" id="btn-play" class="primary">Play</button>
+        <button type="button" id="btn-pause">Pause</button>
+        <button type="button" id="btn-step">Step</button>
+        <button type="button" id="btn-reset">Restart</button>
+      </div>
+      <label class="speed">
+        <span>Speed</span>
+        <input type="range" id="speed" min="100" max="2000" step="50" value="500" />
+        <span class="speed-val" id="speed-val">500 ms</span>
+      </label>
+      <p class="status-line" id="conn-status">Connecting…</p>
+    </footer>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
