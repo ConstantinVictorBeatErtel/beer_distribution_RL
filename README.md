@@ -9,6 +9,17 @@ We add a capacity-constrained factory with order-inflating rationing, an optiona
 (and unverified) cheap-talk channel, and a two-retailer "Y" topology, then ask
 whether cooperation — or deception — *emerges* from pure self-interest.
 
+```mermaid
+flowchart LR
+    F["🏭 Factory<br/>capacity-capped"] --> D[Distributor] --> W[Wholesaler]
+    W --> RA[Retailer A] --> CA([Customer A])
+    W --> RB[Retailer B] --> CB([Customer B])
+```
+
+<sub>Goods flow downstream (left → right); **orders** flow back upstream. Under a
+tight factory cap, the two retailers compete for a rationed supply — the setup
+where shortage gaming appears.</sub>
+
 > **Status.** Classical RL (Tier 1) is done and holds its headline result: trained
 > agents rediscover 1997-style **shortage gaming** under tight capacity. The LLM
 > tier (Tier 2) is in its free capability-floor phase — see [`CURRENT_STATE.md`](CURRENT_STATE.md).
@@ -40,6 +51,14 @@ python scripts/serve_spectator.py        # then open http://127.0.0.1:8000
 | **Honest signaling emerges** from selfish agents | ❌ Refuted — the cheap-talk channel is inert; the strategy lives in the order stream |
 | **Honesty-weighted rationing restores truth-telling** | ❌ Refuted — agents disengage from the channel rather than tell the truth |
 | **Qwen2.5-3B clears the LLM capability floor** | ❌ Not yet — parses cleanly (0% fail) but collapses to near-zero orders; move up a size |
+
+![Order inflation vs. factory capacity](artifacts/diagnostics/shortage_gaming_inflation_vs_capacity.png)
+
+<sub>**The headline result.** As factory capacity tightens (left → right), agents
+order further *above* the base-stock benchmark — but only under **proportional**
+rationing (solid/blue), which rewards claiming a bigger share. Under **uniform**
+rationing (dashed/orange), where inflation earns nothing, orders fall back toward
+or below the benchmark. Y-topology, AR(1) demand, 10 seeds, matched-deterministic eval.</sub>
 
 ---
 
