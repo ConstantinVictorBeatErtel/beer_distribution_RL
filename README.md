@@ -10,7 +10,20 @@ See [PROJECT_SPEC.md](PROJECT_SPEC.md) and [DECISIONS.md](DECISIONS.md).
 pip install -e ".[dev]"               # env + tests
 pip install -e ".[dev,wrappers]"      # + PettingZoo / Gymnasium
 pip install -e ".[dev,wrappers,marl]" # + PyTorch IPPO
+pip install -e ".[web]"               # + live spectator UI (FastAPI)
 ```
+
+## Live spectator (visualization)
+
+Watch a Y-topology Beer Game episode in the browser: two retailers under one wholesaler, Sterman agents, live orders/shipments, per-retailer customer demand, and per-player costs.
+
+```bash
+pip install -e ".[web]"
+python scripts/serve_spectator.py
+# open http://127.0.0.1:8000
+```
+
+Controls: Play / Pause / Step / Restart and a speed slider. Frames stream over WebSocket from `BeerGameCore` (see `beer_distribution_rl/web/`).
 
 ## Validation gate (M1)
 
@@ -45,4 +58,5 @@ beer_distribution_rl/
   agents/
     baselines.py
     ippo/       # Independent PPO
+  web/          # live spectator (FastAPI + static UI)
 ```
