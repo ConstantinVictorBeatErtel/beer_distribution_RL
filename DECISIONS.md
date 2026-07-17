@@ -137,3 +137,12 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Headline verdict | **`supported`** | B×Y×AR(1): gap(∞→0.8μ)=+8.80 under prop; mean prop−uniform @ tight = +6.79; serial scarcity Δ=−4.82 (no-rival control). Details: `artifacts/diagnostics/shortage_gaming.md` |
 | Rival externality | Weak / mixed | Share-based corr(Δorder,Δalloc) prop 0.24 vs uni 0.13 at 0.8μ — directional but not decisive |
 | Channel dependence | A ≈ B on Y×prop inflation | Gaming does not require the broadcast channel |
+
+## Honesty-weighted recheck (2026-07-15) — `analysis/honesty-weighted-recheck`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Logged HW mechanism | **Broadcast** truthfulness EMA (not orders) | `measure_honesty` on claimed_demand/inventory; orders never enter EMA |
+| Share-drop under matched-det | **Survives** | All-role HW ~0.38 vs prop ~0.51; **retailer** share → ~0 (argmax silence) vs prop ~0.28 — claimants flee; upstream still broadcasts |
+| EMA-never-accumulated artifact | **Ruled out** | Det EMA flat only because silent; stoch probe: EMA≠0 frac≈0.62, mean\|ΔEMA\|≈0.76 |
+| Headline grade | **`footnote-grade`** | Real disengagement from a noise-weighted reputation game; not P3 truth restoration. Order-truthfulness re-run is the interesting pivot. Details: `artifacts/diagnostics/honesty_weighted_recheck.md` |
