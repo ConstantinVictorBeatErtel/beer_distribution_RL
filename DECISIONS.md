@@ -124,3 +124,16 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | **Overall readiness verdict** | **READY-FOR-FIRST-GRPO-CELL** | All v1 blockers cleared; details: `artifacts/diagnostics/llm_tier_readiness_v2.md` |
 | First cell (SPEC only) | Y × Regime A order-only × **1.0μ** × prop × AR(1) × **3 seeds** × Qwen2.5-3B × LoRA/role × W=8 × G=4 × 50 upd | Smallest probe of RL vs order-signal/shortage-gaming; est. **~$30** (3/9 of $89); kill if no RL signal / collapse / protocol breach |
 | GRPO | **Not started** | $0 this audit; launch only after human review |
+
+## Shortage gaming / order-stream pivot (2026-07-15) — `analysis/shortage-gaming`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Cheap-talk as strategic object | **Demoted** | `v11_signal_content`: babbling; ablation: channel not load-bearing |
+| Primary strategic object | **Order stream** under multi-claimant rationing (Y) | Orders costly; proportional rationing rewards claim inflation (Lee et al. 1997) |
+| Eval protocol | Matched-deterministic (`greedy=True`, seed+10k) | Same definition as eval-mode blast radius; no train/reward/env edits |
+| Inflation benchmark | Base-stock S=30 (sens. {9,22,30,45} + pass-through) | Installation stock for AR(1) μ=7.5, L=3 (BUGHUNT); not classic DQN S=9 |
+| Gaming label rule | Require response to **both** capacity tightness **and** rationing rule | Guard against mechanical / cap-128 artifacts |
+| Headline verdict | **`supported`** | B×Y×AR(1): gap(∞→0.8μ)=+8.80 under prop; mean prop−uniform @ tight = +6.79; serial scarcity Δ=−4.82 (no-rival control). Details: `artifacts/diagnostics/shortage_gaming.md` |
+| Rival externality | Weak / mixed | Share-based corr(Δorder,Δalloc) prop 0.24 vs uni 0.13 at 0.8μ — directional but not decisive |
+| Channel dependence | A ≈ B on Y×prop inflation | Gaming does not require the broadcast channel |
