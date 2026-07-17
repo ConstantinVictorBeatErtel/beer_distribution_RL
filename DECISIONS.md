@@ -146,3 +146,9 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Share-drop under matched-det | **Survives** | All-role HW ~0.38 vs prop ~0.51; **retailer** share → ~0 (argmax silence) vs prop ~0.28 — claimants flee; upstream still broadcasts |
 | EMA-never-accumulated artifact | **Ruled out** | Det EMA flat only because silent; stoch probe: EMA≠0 frac≈0.62, mean\|ΔEMA\|≈0.76 |
 | Headline grade | **`footnote-grade`** | Real disengagement from a noise-weighted reputation game; not P3 truth restoration. Order-truthfulness re-run is the interesting pivot. Details: `artifacts/diagnostics/honesty_weighted_recheck.md` |
+
+## Eval-mode blast radius (2026-07-15) — `diag/eval-mode-blast-radius`
+
+| Decision | Default | Rationale |
+|---|---|---|
+| Logged Tier-1 A−B scarcity gaps (28–53% and siblings from `final_eval` / `index.json`) | **RETRACTED** | Root cause: `IPPOTrainer.evaluate` uses `greedy=not self.signaling` — A/C argmax, B stochastic. Not a fair cross-regime compare. Corrected matched-deterministic table: `artifacts/diagnostics/eval_mode_blast_radius.md` (baseline SHA `061aa59235397b7360c32a01cf4f98add0dd503a`) |
