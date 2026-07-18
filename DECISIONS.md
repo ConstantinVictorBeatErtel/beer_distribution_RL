@@ -170,3 +170,67 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Capability floor (Qwen2.5-3B, greedy, JSON-schema decode) | **NOT CLEARED** | Colab smoke, T=52: parse-fail 0% both cells, but mean order collapses toward 0 (classic 0.38/0.08/0.0/0.0; y_tight 1.88/1.77/0.87/0.31/0.02) instead of tracking demand. Classic system cost 3.5× the naive demand-matching baseline (9636 vs 2768); y_tight ≈ parity but via backlog spiral, not real ordering. |
 | Action on floor failure | **Do not launch GRPO on 3B** | PROJECT_SPEC §4 Tier-2: "if the base model can't play coherently zero-shot, results at that size are uninterpretable — move up a size." Re-run the same free smoke on 7B (or an alt. base model) before any paid step. |
 | Spend | **$0** | Colab free-tier T4; no GPU rental used |
+
+## Hub environment interface v1 (2026-07-18) — `codex/verifiers-environment`
+
+| Decision | v1 choice | Rationale |
+|---|---|---|
+| Agent exposure | **One controlled role per rollout** against deterministic scripted counterparties | Supports attributable, inexpensive, exactly replayable model comparisons; true multi-agent is deferred |
+| Role coverage | Separate tasks for every serial and Y role | Prevents retailer-only results from hiding echelon-specific difficulty |
+| Action | Strict `place_order(quantity: integer)` tool, absolute quantity in [0, 128] | Native agent interface; invalid actions are rejected without clamping, defaults, state advance, or RNG consumption |
+| Decision boundary | Observe receipts, current demand/order, fulfillment, and local state **before** ordering | Matches the Beer Game decision rather than the legacy caller's action-before-new-observation behavior |
+| Observation | Current local state plus last 8 own-role records; no other-role state or future delayed orders | Fixed memory contract with bounded context and no `order_pipeline` look-ahead leak |
+| Horizon | 36 weeks default; 52-week stress setting | Preserves delayed dynamics while keeping frontier-model evaluation affordable |
+| Objective disclosed to agent | Minimize controlled-role local cost | Preserves the original self-interested-agent question; exact grading is Stage 3 |
+| Distribution | Verifiers reference adapter; optional HUD v6 parity adapter later | Prime Intellect is the publication target; HUD demonstrates portability without entering the simulator core |
+| Normative specification | [`docs/ENVIRONMENT_SPEC.md`](docs/ENVIRONMENT_SPEC.md) | Stage 2 approved 2026-07-18 |
+
+## Hub environment grading v1 (2026-07-18) — `codex/verifiers-environment`
+
+| Decision | v1 choice | Rationale |
+|---|---|---|
+| Headline outcome | Controlled-role undiscounted local total cost | Preserves the self-interested-agent question and remains directly auditable |
+| Hub scalar | `C_base / (C_base + C_agent)` using frozen same-seed base-stock reference | Bounded, monotonic, cross-cell normalization; base-stock anchors at 0.5 without clipping |
+| Horizon defense | Deterministic settlement plus one-period terminal inventory-position charge | Advances committed pipelines and values remaining shortages/commitments without extra model calls or randomness |
+| Protocol | Any invalid first attempt makes official episode reward zero | Prevents deliberate retries from purchasing extra inference; repaired costs remain diagnostic only |
+| Diagnostics | Local/system cost, externality, immediate and horizon service, bullwhip, normalized order volatility | Exposes shortage gaming and constant-zero policies without arbitrary weighted reward terms |
+| Constant demand | Bullwhip is `null`; report normalized order volatility | Variance-ratio bullwhip is undefined when demand variance is zero |
+| Reasoning quality | No reasoning term in v1 reward; optional offline trace-grounded strategy audit only | Post-hoc prose is not hidden reasoning and judge variance should not contaminate programmatic scoring |
+| Normative specification | [`docs/REWARD_SPEC.md`](docs/REWARD_SPEC.md) | Stage 3 approved 2026-07-18 |
+
+## Hub environment difficulty ladder v1 (2026-07-18) — `codex/verifiers-environment`
+
+| Decision | v1 choice | Rationale |
+|---|---|---|
+| Tier 1 | Constant demand 8, serial, shipment notices | Isolates protocol and steady delayed control |
+| Tier 2 | Stationary AR(1): μ=7.5, φ=0.7, σ=2.0 | Adds persistent uncertainty without changing topology or observability |
+| Tier 3 | Same AR(1) with hidden seeded shift: week {15,19,23}, μ after {4,12} | Tests change detection in both directions and prevents calendar-only policies |
+| Tier 4 | Exact Tier 3 latent trajectory with shipment slots hidden | Paired contrast isolates belief-state maintenance under partial observability |
+| Tier 5 | Y, correlated demand, calibrated capacity 22, proportional rationing, aggressive rival +8 | Tests strategic robustness under intermittent scarcity and a competing claimant |
+| Tier 5 controls | Base-stock rival/proportional and aggressive rival/uniform | Makes claims about opponent pressure and allocation incentives falsifiable |
+| Counterparties | Deterministic `adaptive_base_stock_v2` with EMA forecast α=0.25 and target `L*forecast` | Uses the three decision intervals proven by the order-to-receipt timing test, without privileged future knowledge |
+| Frontier compute | All models: five-tier retailer screen, 10 seeds; at least two models: all roles, 5 seeds | Preserves broad comparison while bounding model calls; all unpromoted results remain visible |
+| Seed splits | 3 development, 5 validation, 10 test; 64-bit SHA-256 seeds serialized as hex strings | Reproducible splits without sequential-seed, mutable-RNG coupling, or JSON precision loss |
+| Normative specification | [`docs/DIFFICULTY_LADDER.md`](docs/DIFFICULTY_LADDER.md) | Stage 4 approved 2026-07-18 |
+
+## Hub implementation API (2026-07-18) — `codex/verifiers-environment`
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Verifiers version | Pin stable `verifiers==0.2.0` | PyPI and official tag inspection showed 0.2.0 supersedes the 0.1.x APIs |
+| Native package contract | Export exactly one typed `BeerTaskset` and bundled `BeerHarness` through `__all__` | Verifiers 0.2 v1 discovers plugin classes; legacy `load_environment()` is explicitly prohibited for new packages |
+| Harness | Custom MCP-only rolling-context harness | Built-in minimal harness retains the growing conversation; that would violate the approved 8-record model-memory contract |
+| Package boundary | Self-contained `environments/beer_distribution_game/` Hatch project | Matches Hub installation/push unit and keeps Verifiers out of the framework-neutral simulator modules |
+| Tier 5 capacity calibration | **22**, replacing the provisional 15 | Rechecked after the v2 timing correction on five validation seeds: 22 binds in 100/180 base-rival weeks (55.6%, inside the predeclared 10%--70% gate), aggressive retailers have 0 order-cap hits, and base-stock beats random. No test split or new frontier result was inspected. |
+
+## Hub baseline evaluation smoke (2026-07-18) — `codex/verifiers-environment`
+
+| Decision | Choice / finding | Rationale |
+|---|---|---|
+| Akash model | `deepseek-ai/DeepSeek-V4-Flash`, temperature 0 | Cheapest account-visible tool-capable model; direct strict-tool probe passed |
+| Tool enforcement | API-level `tool_choice="required"`, parallel calls disabled | Initial integration run exhausted 64 tokens on prose and terminated at the protocol gate; this was a harness failure, not a model result |
+| Provider resilience | Two request-level retries, 120-second request timeout | Akash returned intermittent HTTP 502 responses; retry occurs before state mutation and completed the same episode cleanly |
+| Concurrency | 1 for Akash smoke | Five concurrent episodes stalled for 12 minutes with no completion; sequential execution completed reliably |
+| Five-tier result | Protocol-clean on all five development-seed-0 tasks; rewards T1–T5: 0.816, 0.383, 0.225, 0.224, 0.171 | Preliminary capability smoke only; one seed, no variance, no test split |
+| Successful-trace usage | 184,727 input + 7,920 output tokens; estimated $0.028 at recorded price | Excludes the direct probe and aborted integration attempts; not an account-billing total |
+| Base-stock timing correction | **Resolved in environment v0.2.0** | A one-unit impulse placed after week 1 demand arrives at the retailer at the start of week 4. The v1 target double-counted a review period; v2 uses `L*forecast`, orders 8 throughout T1, and has exact graded cost 69 including startup, settlement, and terminal exposure. Prior v1 model traces are retained as diagnostics but are not comparable results. |

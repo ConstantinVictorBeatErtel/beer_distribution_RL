@@ -42,5 +42,5 @@ beer_distribution_rl = ["web/static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "environments/beer_distribution_game"]
 addopts = "-q"

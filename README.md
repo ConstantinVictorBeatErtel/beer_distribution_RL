@@ -21,9 +21,11 @@ tight factory cap, the two retailers compete for a rationed supply — the setup
 where shortage gaming appears.</sub>
 
 > **Status.** Classical RL (Tier 1) is done and holds its headline result: trained
-> agents rediscover 1997-style **shortage gaming** under tight capacity. The LLM
-> tier (Tier 2) is in its free capability-floor phase — see [`CURRENT_STATE.md`](CURRENT_STATE.md).
-> **$0 of the $250 budget spent.**
+> agents rediscover 1997-style **shortage gaming** under tight capacity. The new
+> Verifiers environment is implemented and locally validated; its preliminary
+> Akash smoke is not yet a benchmark result. The LLM tier (Tier 2) remains in its
+> capability-floor phase — see [`CURRENT_STATE.md`](CURRENT_STATE.md). Only about
+> **$0.028 of the $250 evaluation budget** has been used for the recorded smoke.
 
 📄 [Research spec](PROJECT_SPEC.md) · 🧭 [Design decisions](DECISIONS.md) · 📌 [Current state](CURRENT_STATE.md)
 
@@ -40,6 +42,45 @@ Frames stream over WebSocket straight from the simulator.
 pip install -e ".[web]"
 python scripts/serve_spectator.py        # then open http://127.0.0.1:8000
 ```
+
+---
+
+## 🧪 Verifiers environment
+
+The repository also ships a native [Verifiers 0.2](https://github.com/PrimeIntellect/verifiers)
+environment for evaluating LLM supply-chain control. Each rollout gives one
+model one role—retailer, wholesaler, distributor, or factory—against deterministic
+scripted counterparties. The model sees only its local state and the last eight
+accepted decisions, then calls the strict `place_order(quantity)` tool once per
+week. Serial and two-retailer Y topologies are supported, with deterministic
+settlement, exact replay, and no future pipeline look-ahead.
+
+The five-tier ladder progresses from constant demand to stochastic demand, hidden
+regime changes, partial shipment observability, and strategic scarcity under
+capacity-constrained proportional rationing. The official scalar is the
+controlled role's local cost normalized against a same-seed adaptive base-stock
+reference. Service, bullwhip, order volatility, system cost, and protocol
+compliance remain separate diagnostics; an invalid first attempt zeros the
+official episode reward even if the episode is later repaired.
+
+The framework-neutral specifications are [`docs/ENVIRONMENT_SPEC.md`](docs/ENVIRONMENT_SPEC.md),
+[`docs/REWARD_SPEC.md`](docs/REWARD_SPEC.md), and
+[`docs/DIFFICULTY_LADDER.md`](docs/DIFFICULTY_LADDER.md). To validate the Hub
+package locally:
+
+```bash
+cd environments/beer_distribution_game
+uv sync
+uv run validate beer-distribution-game --runtime.type subprocess
+uv run eval @ eval.toml --dry-run True
+```
+
+The checked-in Akash smoke completed all 180 decisions with clean tool protocol
+at temperature 0. Rewards across tiers 1–5 were 0.816, 0.383, 0.225, 0.224,
+and 0.171 on development seed 0. This is a one-seed capability smoke, not a
+model-ranking claim. Tier 1 also revealed that the current base-stock reference
+may be miscalibrated under the implemented event order, so it must be audited
+before any larger paid evaluation or benchmark freeze.
 
 ---
 
@@ -105,4 +146,6 @@ beer_distribution_rl/
 scripts/        # validation gate, training, matrix runner, spectator, LLM episode
 notebooks/      # Colab: Tier-1 matrix + LLM capability-floor smoke
 experiments/    # one YAML per matrix cell
+environments/   # native Verifiers Hub package and evaluation configs
+docs/           # environment, reward, and difficulty specifications
 ```

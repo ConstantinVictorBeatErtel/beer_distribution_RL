@@ -1,0 +1,71 @@
+max_turns = 38
+multiplex = 32
+model = "deepseek-ai/DeepSeek-V4-Flash"
+num_tasks = 15
+num_rollouts = 1
+shuffle = false
+max_concurrent = 5
+verbose = false
+dry_run = false
+rich = true
+server = false
+push = false
+output_dir = "artifacts/hub_llm/deepseek_v4_flash/development_fixed"
+
+[taskset]
+id = "beer-distribution-game"
+split = "development"
+tiers = [
+    1,
+    2,
+    3,
+    4,
+    5,
+]
+role_mode = "core"
+seed_limit = 3
+tier5_controls = false
+
+[taskset.task]
+judges = []
+
+[taskset.task.tools]
+colocated = false
+
+[taskset.task.tools.runtime]
+type = "subprocess"
+
+[harness]
+id = "beer-distribution-game"
+forward_env = []
+
+[harness.runtime]
+type = "subprocess"
+
+[harness.env]
+
+[timeout]
+
+[retries.rollout]
+max_retries = 0
+include = []
+exclude = []
+
+[args]
+
+[extra_env_kwargs]
+
+[pool]
+type = "elastic"
+multiplex = 128
+
+[client]
+base_url = "https://api.akashml.com/v1"
+api_key_var = "AKASH_API_KEY"
+type = "eval"
+
+[client.headers]
+
+[sampling]
+temperature = 0.0
+max_tokens = 96

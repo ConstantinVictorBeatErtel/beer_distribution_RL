@@ -4,6 +4,7 @@ __pycache__/
 .eggs/
 dist/
 build/
+outputs/
 .pytest_cache/
 .hypothesis/
 .mypy_cache/
@@ -11,6 +12,8 @@ build/
 .venv/
 venv/
 *.log
+.env
+.env.*
 .DS_Store
 artifacts/runs/**/checkpoints/
 artifacts/runs/**/*.pt
