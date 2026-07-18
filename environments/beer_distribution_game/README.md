@@ -30,5 +30,24 @@ The package exports one `BeerTaskset` and one bundled `BeerHarness`, following t
 native Verifiers 0.2 contract. It requires no API keys for simulation or grading.
 The checked-in evaluation config disables result upload by default.
 
+## Current development evidence
+
+The steady retailer task is a protocol/control screen. DeepSeek V4 Flash matched
+the corrected base-stock reference exactly (cost 69, reward 0.5). The complementary
+Tier 5 Y-wholesaler task is harder: across three development seeds the model cost
+was 1,111.8 ± 213.2 versus 850.7 ± 326.1 for paired base-stock, with reward
+0.423 ± 0.060. All 108 actions were protocol-clean. This is a development finding,
+not a held-out or multi-model benchmark result.
+
+Evaluation configurations are named by role and scope:
+
+- `eval_akash_retailer_smoke.toml` and `eval_akash_retailer_dev.toml`;
+- `eval_akash_wholesaler_y_smoke.toml` and
+  `eval_akash_wholesaler_y_dev.toml`.
+
+Start with a one-seed smoke. All Akash configurations run sequentially, keep
+uploads disabled, and read the API key from `AKASH_API_KEY`; credentials are
+never stored in configs or compact result artifacts.
+
 See the repository-level specifications for the complete interface, reward, and
 difficulty contracts.

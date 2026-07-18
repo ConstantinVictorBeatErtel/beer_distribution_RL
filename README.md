@@ -1,71 +1,86 @@
-# Beer Distribution RL
+# Beer Distribution Game for RL and LLM Agents
 
-**Do self-interested supply-chain agents rediscover the bullwhip effect — and learn to game it?**
+A deterministic multi-agent supply-chain environment for studying delayed
+control, the bullwhip effect, and strategic ordering under scarcity.
 
-Independent, selfish agents — classical MARL policies and small LLMs — play an
-extended [Beer Distribution Game](https://en.wikipedia.org/wiki/Beer_distribution_game).
-Each agent has its own parameters and is evaluated **only on its own local outcomes**.
-We add a capacity-constrained factory with order-inflating rationing, an optional
-(and unverified) cheap-talk channel, and a two-retailer "Y" topology, then ask
-whether cooperation — or deception — *emerges* from pure self-interest.
+The repository contains two related research artifacts:
+
+- a classical multi-agent RL simulator with Gymnasium, PettingZoo, IPPO, and
+  recurrent-policy experiments;
+- a publication-oriented [Verifiers](https://github.com/PrimeIntellect/verifiers)
+  environment where one LLM controls one supply-chain role through a strict tool.
 
 ```mermaid
 flowchart LR
-    F["🏭 Factory<br/>capacity-capped"] --> D[Distributor] --> W[Wholesaler]
-    W --> RA[Retailer A] --> CA([Customer A])
-    W --> RB[Retailer B] --> CB([Customer B])
+    F["Factory"] --> D["Distributor"] --> W["Wholesaler"]
+    W --> RA["Retailer A"] --> CA["Customer A"]
+    W --> RB["Retailer B"] --> CB["Customer B"]
 ```
 
-<sub>Goods flow downstream (left → right); **orders** flow back upstream. Under a
-tight factory cap, the two retailers compete for a rationed supply — the setup
-where shortage gaming appears.</sub>
+Goods move downstream; orders move upstream. Delays and local information can
+amplify small demand changes into unstable ordering.
 
-> **Status.** Classical RL (Tier 1) is done and holds its headline result: trained
-> agents rediscover 1997-style **shortage gaming** under tight capacity. The new
-> Verifiers environment is implemented and locally validated; its preliminary
-> Akash smoke is not yet a benchmark result. The LLM tier (Tier 2) remains in its
-> capability-floor phase — see [`CURRENT_STATE.md`](CURRENT_STATE.md).
+## What the LLM environment tests
 
-📄 [Research spec](PROJECT_SPEC.md) · 🧭 [Design decisions](DECISIONS.md) · 📌 [Current state](CURRENT_STATE.md)
+Every week the model receives a seeded local observation and must call:
 
----
+```text
+place_order(quantity: integer from 0 through 128)
+```
 
-## 🎬 Live spectator
+The model never sees future demand or another role's private state. Scripted,
+deterministic counterparties control the remaining roles. Episodes contain 36
+decision weeks followed by deterministic settlement.
 
-Watch a game play out in your browser: two retailers under one wholesaler, live
-orders and shipments flowing through the chain, per-retailer customer demand, and
-running per-player outcomes. Play / Pause / Step / Restart, with a speed slider.
-Frames stream over WebSocket straight from the simulator.
+| Tier | Change | Capability |
+|---:|---|---|
+| 1 | Constant demand | Protocol use and stable delayed control |
+| 2 | Persistent AR(1) demand | Filtering without overreaction |
+| 3 | Hidden demand shift | Online change detection |
+| 4 | Hidden shipment timing | Bounded-memory belief tracking |
+| 5 | Y topology, scarcity, aggressive retailers | Bullwhip control under competing claims |
+
+The primary reward compares controlled-role total cost with a same-seed adaptive
+base-stock policy. Fill rate, bullwhip, order volatility, system cost, and protocol
+compliance are reported separately. The reward is trace-derived and does not use
+an LLM judge.
+
+## Reproducibility
+
+- Scenario seeds use stable SHA-256 derivation and explicit split membership.
+- A recorded action sequence exactly reproduces transitions and grading.
+- Invalid actions cannot partially mutate simulator state.
+- Test seeds are opt-in and are not used for calibration.
+- Environment v0.2.0 corrected a base-stock lead-time off-by-one found by a
+  one-unit impulse test. Results produced by v1 are not comparable.
+
+## Current evidence
+
+These are development results, not held-out benchmark claims.
+
+| Evaluation | Result |
+|---|---|
+| Classical RL | Independent policies rediscover shortage gaming under proportional rationing |
+| Steady retailer, DeepSeek V4 Flash | Cost 69 vs. base-stock 69; reward 0.500 |
+| Tier 5 Y wholesaler, 3 development seeds | Model cost 1,111.8 ± 213.2 vs. base-stock 850.7 ± 326.1; reward 0.423 ± 0.060 |
+
+DeepSeek used the required tool on all 108 wholesaler decisions but lost to
+base-stock on every seed. That negative result is retained: the wholesaler is the
+main learning target, while the retailer remains a useful protocol/control task.
+
+Compact results and replay actions are in
+[`artifacts/hub_llm/deepseek_v4_flash/v0_2_wholesaler_y_development/`](artifacts/hub_llm/deepseek_v4_flash/v0_2_wholesaler_y_development/).
+
+## Quick start
+
+Core simulator and tests:
 
 ```bash
-pip install -e ".[web]"
-python scripts/serve_spectator.py        # then open http://127.0.0.1:8000
+python -m pip install -e ".[dev]"
+python -m pytest -q
 ```
 
----
-
-## 🧪 Verifiers environment
-
-The repository also ships a native [Verifiers 0.2](https://github.com/PrimeIntellect/verifiers)
-environment for evaluating LLM supply-chain control. Each rollout gives one
-model one role—retailer, wholesaler, distributor, or factory—against deterministic
-scripted counterparties. The model sees only its local state and the last eight
-accepted decisions, then calls the strict `place_order(quantity)` tool once per
-week. Serial and two-retailer Y topologies are supported, with deterministic
-settlement, exact replay, and no future pipeline look-ahead.
-
-The five-tier ladder progresses from constant demand to stochastic demand, hidden
-regime changes, partial shipment observability, and strategic scarcity under
-capacity-constrained proportional rationing. The official scalar summarizes the
-controlled role's local performance against a same-seed adaptive base-stock
-reference. Service, bullwhip, order volatility, system impact, and protocol
-compliance remain separate diagnostics; an invalid first attempt zeros the
-official episode reward even if the episode is later repaired.
-
-The framework-neutral specifications are [`docs/ENVIRONMENT_SPEC.md`](docs/ENVIRONMENT_SPEC.md),
-[`docs/REWARD_SPEC.md`](docs/REWARD_SPEC.md), and
-[`docs/DIFFICULTY_LADDER.md`](docs/DIFFICULTY_LADDER.md). To validate the Hub
-package locally:
+Verifiers package validation:
 
 ```bash
 cd environments/beer_distribution_game
@@ -74,79 +89,50 @@ uv run validate beer-distribution-game --runtime.type subprocess
 uv run eval @ eval.toml --dry-run True
 ```
 
-The checked-in Akash smoke completed all 180 decisions with clean tool protocol
-at temperature 0. Scores across tiers 1–5 were 0.816, 0.383, 0.225, 0.224,
-and 0.171 on development seed 0. This is a one-seed capability smoke, not a
-model-ranking claim. Tier 1 also revealed that the current base-stock reference
-may be miscalibrated under the implemented event order, so it must be audited
-before a larger evaluation or benchmark freeze.
-
----
-
-## Key findings
-
-| Finding | Result |
-|---|---|
-| **Shortage gaming emerges** (Y-topology, tight capacity, proportional rationing) | ✅ Supported — agents inflate orders to grab a larger rationed share |
-| **Honest signaling emerges** from selfish agents | ❌ Refuted — the cheap-talk channel is inert; the strategy lives in the order stream |
-| **Honesty-weighted rationing restores truth-telling** | ❌ Refuted — agents disengage from the channel rather than tell the truth |
-| **The Verifiers action protocol is reliable** | ✅ Preliminary support — all 180 Akash smoke decisions used clean tool calls; this is not yet a multi-seed benchmark result |
-| **The Verifiers ladder separates capabilities** | ✅ Preliminary support — the single-seed smoke score declined across the five increasingly difficult tiers |
-| **Qwen2.5-3B clears the LLM capability floor** | ❌ Not yet — parses cleanly (0% fail) but collapses to near-zero orders; move up a size |
-
-![Order inflation vs. factory capacity](artifacts/diagnostics/shortage_gaming_inflation_vs_capacity.png)
-
-<sub>**The headline result.** As factory capacity tightens (left → right), agents
-order further *above* the base-stock benchmark — but only under **proportional**
-rationing (solid/blue), which rewards claiming a bigger share. Under **uniform**
-rationing (dashed/orange), where inflation earns nothing, orders fall back toward
-or below the benchmark. Y-topology, AR(1) demand, 10 seeds, matched-deterministic eval.</sub>
-
----
-
-## Install
+Regenerate deterministic heuristic and random baselines:
 
 ```bash
-pip install -e ".[dev]"               # env + tests (pure-Python core, no ML deps)
-pip install -e ".[dev,wrappers]"      # + PettingZoo / Gymnasium
-pip install -e ".[dev,wrappers,marl]" # + PyTorch IPPO (Tier 1)
-pip install -e ".[web]"               # + live spectator UI (FastAPI)
+PYTHONPATH=environments/beer_distribution_game \
+  python scripts/eval_hub_baselines.py
 ```
 
-## Quickstart
+Akash configurations read `AKASH_API_KEY` from the process environment and keep
+result upload disabled. Start with the one-seed wholesaler smoke configuration;
+use the three-seed development configuration only after the smoke is clean.
 
-```bash
-# 1. Validation gate — env must reproduce published baselines before training
-python scripts/validation_gate.py
+The first one-GPU RL pilot is documented in
+[`notebooks/colab_llm_grpo_wholesaler.ipynb`](notebooks/colab_llm_grpo_wholesaler.ipynb)
+and uses the native deterministic simulator/grader with a local JSON action
+serializer. A selected adapter still requires a separate native Verifiers
+tool-call evaluation before publication.
 
-# 2. Tier-1 IPPO — one policy + critic PER ROLE, no parameter sharing
-python scripts/train_ippo.py --config experiments/regime_a_classic.yaml --seed 0
-python scripts/run_tier1_matrix.py --dry-run     # pruned cell count
-python scripts/run_tier1_matrix.py --workers 8 --n-envs 64 --skip-existing
+## Repository map
 
-# 3. LLM capability floor — can a model even play coherently? (free Colab)
-python scripts/run_llm_episode.py --backend heuristic --cell classic   # no-model baseline
-#   full test: notebooks/colab_llm_smoke.ipynb  (Ollama + Qwen, T4 GPU)
+```text
+beer_distribution_rl/             classical simulator, agents, and wrappers
+environments/beer_distribution_game/  native Verifiers environment
+tests/                             simulator and integration tests
+tests/hub/                         Hub environment and calibration tests
+scripts/                           evaluation and training entry points
+experiments/                       classical RL configurations
+artifacts/                         compact results; large run data is ignored
+docs/                              environment, reward, and difficulty contracts
 ```
 
-**Emergence constraints (non-negotiable):** one policy/LoRA per role, no shared
-weights or critics; rewards are strictly local outcomes; signaling is optional and
-unverified, honesty is *measured* — never rewarded. Regime C (shared system
-reward) exists only as a reproduction anchor.
+Normative LLM-environment documentation:
 
-## Package layout
+- [`docs/ENVIRONMENT_SPEC.md`](docs/ENVIRONMENT_SPEC.md)
+- [`docs/REWARD_SPEC.md`](docs/REWARD_SPEC.md)
+- [`docs/DIFFICULTY_LADDER.md`](docs/DIFFICULTY_LADDER.md)
+- [`DECISIONS.md`](DECISIONS.md) for the design audit trail
 
-```
-beer_distribution_rl/
-  env/          # pure-Python game core — no ML deps, fully tested
-  agents/
-    baselines.py   # base-stock, Sterman, random
-    ippo/          # Tier 1: Independent PPO
-    llm/           # Tier 2: prompt serializer, rolling memory, constrained decoder
-  web/          # live spectator (FastAPI + WebSocket + static UI)
-scripts/        # validation gate, training, matrix runner, spectator, LLM episode
-notebooks/      # Colab: Tier-1 matrix + LLM capability-floor smoke
-experiments/    # one YAML per matrix cell
-environments/   # native Verifiers Hub package and evaluation configs
-docs/           # environment, reward, and difficulty specifications
-```
+## Next evaluation gate
+
+1. Run a second tool-capable model on the same three wholesaler development seeds.
+2. Measure repeated-generation variance on one fixed seed.
+3. Freeze the prompt and environment version.
+4. Evaluate validation seeds and both Tier 5 mechanism controls.
+5. Only then launch a small LoRA/GRPO wholesaler training cell and compare it
+   honestly with base-stock.
+
+MIT licensed. No API keys are stored in the repository.

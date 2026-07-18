@@ -111,7 +111,8 @@ contains:
 
 The prompt must not describe an unimplemented coordination goal, imply that system
 cost is rewarded, reveal future demand, or reveal another role's inventory,
-backlog, pipeline, policy parameters, or next action.
+private backlog, pipeline, policy parameters, or next action. A role's own
+pending replenishment status may be summarized in `on_order`.
 
 ## 6. Observation schema
 
@@ -170,14 +171,18 @@ JSON or equivalent text but may not add information.
   replenishment order.
 - `incoming_demand_or_order` means customer demand for a retailer and the received
   downstream order for an upstream role.
-- `on_order` includes shipments in transit plus upstream unfilled replenishment.
+- `on_order` includes shipments in transit plus the controlled role's own
+  upstream unfilled replenishment. The latter is an order-status signal for the
+  controlled role, not the supplier's other claimants, total inventory, or
+  private backlog.
 - `inbound_shipment_pipeline` is present only in observation modes with advance
   shipment notices. It contains shipments already dispatched to the controlled
   role, never another role's order pipeline.
 - A delayed downstream order that has been placed but has not arrived is future
   private information. It is never exposed through an `order_pipeline` field.
 - `recent_history` contains at most the previous 8 accepted decisions and outcomes.
-- Other roles' private values are forbidden.
+- Other roles' private values are forbidden. The only upstream quantity included
+  in `on_order` is the controlled role's own pending replenishment status.
 - Future demand samples, hidden regime state, and counterparty actions are forbidden.
 - Full transcripts are retained for audit even though the model-visible window is 8.
 

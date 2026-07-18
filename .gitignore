@@ -21,6 +21,8 @@ artifacts/runs/**/*.pth
 artifacts/runs/**/history.json
 artifacts/runs/*.log
 artifacts/**/*.csv
+artifacts/hub_llm/**/traces.jsonl
+artifacts/hub_llm/**/config.toml
 !artifacts/validation_gate/report.md
 !artifacts/validation_gate/results.json
 !artifacts/validation_gate/config.yaml

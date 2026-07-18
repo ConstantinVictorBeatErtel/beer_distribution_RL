@@ -1,0 +1,67 @@
+# Development-only Tier-5 Y-wholesaler GRPO smoke.
+# Requires the current Prime-RL launcher and two visible NVIDIA GPUs:
+# one inference GPU and one trainer GPU. Do not add validation/test envs here.
+
+max_steps = 10
+seq_len = 8192
+
+[deployment]
+num_train_gpus = 1
+num_infer_gpus = 1
+
+[model]
+name = "Qwen/Qwen3-0.6B"
+
+[trainer.optim]
+lr = 5e-6
+weight_decay = 0.0
+
+[trainer.model.lora]
+rank = 8
+alpha = 16
+dropout = 0.0
+target_modules = [
+    "q_proj",
+    "k_proj",
+    "v_proj",
+    "o_proj",
+    "gate_proj",
+    "up_proj",
+    "down_proj",
+]
+
+[orchestrator]
+batch_size = 16
+group_size = 8
+
+[orchestrator.algo]
+type = "grpo"
+
+[orchestrator.renderer]
+name = "qwen3"
+
+[orchestrator.train.sampling]
+temperature = 0.7
+max_completion_tokens = 256
+extra_body = { top_p = 0.95 }
+
+[[orchestrator.train.env]]
+name = "beer-wholesaler-y-development"
+taskset = { id = "beer-distribution-game", split = "development", tiers = [5], controlled_roles = ["wholesaler"], seed_limit = 3, tier5_controls = false }
+harness = { id = "beer-distribution-game", runtime = { type = "subprocess" } }
+max_turns = 38
+
+[trainer.ckpt]
+
+[trainer.ckpt.weights]
+save_adapter_separately = true
+
+[ckpt]
+
+[inference]
+enable_lora = true
+gpu_memory_utilization = 0.85
+
+[inference.model]
+max_model_len = 8192
+tool_call_parser = "hermes"

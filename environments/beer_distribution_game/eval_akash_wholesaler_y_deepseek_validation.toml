@@ -1,0 +1,26 @@
+model = "deepseek-ai/DeepSeek-V4-Flash"
+num_tasks = 15
+num_rollouts = 1
+max_concurrent = 1
+max_turns = 38
+push = false
+
+[client]
+type = "eval"
+base_url = "https://api.akashml.com/v1"
+api_key_var = "AKASH_API_KEY"
+
+[sampling]
+temperature = 0.0
+max_tokens = 96
+
+[taskset]
+id = "beer-distribution-game"
+split = "validation"
+tiers = [5]
+controlled_roles = ["wholesaler"]
+seed_limit = 5
+tier5_controls = true
+
+[harness]
+id = "beer-distribution-game"

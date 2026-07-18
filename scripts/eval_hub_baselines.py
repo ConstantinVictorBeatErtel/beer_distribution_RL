@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("artifacts/hub_baselines/development_validation"),
+        default=Path("artifacts/hub_baselines/v0_2_development_validation"),
     )
     return parser.parse_args()
 
@@ -178,8 +178,9 @@ def main() -> None:
                 "schema_version": "1.0.0",
                 "splits": list(args.splits),
                 "episode_count": len(rows),
-                "episodes": rows,
                 "summary": summaries,
+                "raw_episode_count": len(rows),
+                "raw_episode_artifact": "episodes.csv (generated locally; not committed)",
             },
             indent=2,
             sort_keys=True,

@@ -223,7 +223,7 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Package boundary | Self-contained `environments/beer_distribution_game/` Hatch project | Matches Hub installation/push unit and keeps Verifiers out of the framework-neutral simulator modules |
 | Tier 5 capacity calibration | **22**, replacing the provisional 15 | Rechecked after the v2 timing correction on five validation seeds: 22 binds in 100/180 base-rival weeks (55.6%, inside the predeclared 10%--70% gate), aggressive retailers have 0 order-cap hits, and base-stock beats random. No test split or new frontier result was inspected. |
 
-## Hub baseline evaluation smoke (2026-07-18) — `codex/verifiers-environment`
+## Superseded v1 Hub smoke (2026-07-18) — `codex/verifiers-environment`
 
 | Decision | Choice / finding | Rationale |
 |---|---|---|
@@ -233,4 +233,13 @@ Logged defaults for the v1 research codebase. Change only with a dated note.
 | Concurrency | 1 for Akash smoke | Five concurrent episodes stalled for 12 minutes with no completion; sequential execution completed reliably |
 | Five-tier result | Protocol-clean on all five development-seed-0 tasks; rewards T1–T5: 0.816, 0.383, 0.225, 0.224, 0.171 | Preliminary capability smoke only; one seed, no variance, no test split |
 | Successful-trace usage | 184,727 input + 7,920 output tokens; estimated $0.028 at recorded price | Excludes the direct probe and aborted integration attempts; not an account-billing total |
-| Base-stock timing correction | **Resolved in environment v0.2.0** | A one-unit impulse placed after week 1 demand arrives at the retailer at the start of week 4. The v1 target double-counted a review period; v2 uses `L*forecast`, orders 8 throughout T1, and has exact graded cost 69 including startup, settlement, and terminal exposure. Prior v1 model traces are retained as diagnostics but are not comparable results. |
+| Base-stock timing correction | **Resolved in environment v0.2.0** | A one-unit impulse placed after week 1 demand arrives at the retailer at the start of week 4. The v1 target double-counted a review period; v2 uses `L*forecast`, orders 8 throughout T1, and has exact graded cost 69 including startup, settlement, and terminal exposure. The v1 summary remains here for auditability; obsolete raw traces were removed from the current tree and remain recoverable from Git history. |
+
+## Corrected v0.2.0 evaluation gate (2026-07-18) — `codex/verifiers-environment`
+
+| Decision / finding | Result | Interpretation |
+|---|---|---|
+| Corrected retailer smoke | DeepSeek V4 Flash cost 69, paired base-stock 69, reward 0.500; 36/36 protocol-clean actions | Confirms the v2 reference and model/tool path agree on the steady-flow solution |
+| Y wholesaler development evaluation | Three seeds; model cost 1,111.8 ± 213.2, paired base-stock 850.7 ± 326.1, reward 0.423 ± 0.060; 108/108 protocol-clean actions | Model lost to base-stock on every seed, supporting the wholesaler as the more informative learning target without claiming held-out generalization |
+| Reproducibility boundary | Environment/action replay is exact; separate temperature-0 seed-0 model runs scored 0.451 and 0.449 | Provider generation is not byte-deterministic, so report action traces and distinguish seed variance from repeat-generation variance |
+| Recorded corrected-pass usage | 187,974 input + 7,920 output tokens across five successful rollouts; about $0.029 at observed prices | Excludes provider-side billing for failed/retried calls and is not an account statement |
