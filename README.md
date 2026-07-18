@@ -4,7 +4,7 @@
 
 Independent, selfish agents — classical MARL policies and small LLMs — play an
 extended [Beer Distribution Game](https://en.wikipedia.org/wiki/Beer_distribution_game).
-Each agent has its own parameters and is rewarded **only on its own local costs**.
+Each agent has its own parameters and is evaluated **only on its own local outcomes**.
 We add a capacity-constrained factory with order-inflating rationing, an optional
 (and unverified) cheap-talk channel, and a two-retailer "Y" topology, then ask
 whether cooperation — or deception — *emerges* from pure self-interest.
@@ -24,8 +24,7 @@ where shortage gaming appears.</sub>
 > agents rediscover 1997-style **shortage gaming** under tight capacity. The new
 > Verifiers environment is implemented and locally validated; its preliminary
 > Akash smoke is not yet a benchmark result. The LLM tier (Tier 2) remains in its
-> capability-floor phase — see [`CURRENT_STATE.md`](CURRENT_STATE.md). Only about
-> **$0.028 of the $250 evaluation budget** has been used for the recorded smoke.
+> capability-floor phase — see [`CURRENT_STATE.md`](CURRENT_STATE.md).
 
 📄 [Research spec](PROJECT_SPEC.md) · 🧭 [Design decisions](DECISIONS.md) · 📌 [Current state](CURRENT_STATE.md)
 
@@ -35,7 +34,7 @@ where shortage gaming appears.</sub>
 
 Watch a game play out in your browser: two retailers under one wholesaler, live
 orders and shipments flowing through the chain, per-retailer customer demand, and
-running per-player costs. Play / Pause / Step / Restart, with a speed slider.
+running per-player outcomes. Play / Pause / Step / Restart, with a speed slider.
 Frames stream over WebSocket straight from the simulator.
 
 ```bash
@@ -57,9 +56,9 @@ settlement, exact replay, and no future pipeline look-ahead.
 
 The five-tier ladder progresses from constant demand to stochastic demand, hidden
 regime changes, partial shipment observability, and strategic scarcity under
-capacity-constrained proportional rationing. The official scalar is the
-controlled role's local cost normalized against a same-seed adaptive base-stock
-reference. Service, bullwhip, order volatility, system cost, and protocol
+capacity-constrained proportional rationing. The official scalar summarizes the
+controlled role's local performance against a same-seed adaptive base-stock
+reference. Service, bullwhip, order volatility, system impact, and protocol
 compliance remain separate diagnostics; an invalid first attempt zeros the
 official episode reward even if the episode is later repaired.
 
@@ -76,11 +75,11 @@ uv run eval @ eval.toml --dry-run True
 ```
 
 The checked-in Akash smoke completed all 180 decisions with clean tool protocol
-at temperature 0. Rewards across tiers 1–5 were 0.816, 0.383, 0.225, 0.224,
+at temperature 0. Scores across tiers 1–5 were 0.816, 0.383, 0.225, 0.224,
 and 0.171 on development seed 0. This is a one-seed capability smoke, not a
 model-ranking claim. Tier 1 also revealed that the current base-stock reference
 may be miscalibrated under the implemented event order, so it must be audited
-before any larger paid evaluation or benchmark freeze.
+before a larger evaluation or benchmark freeze.
 
 ---
 
@@ -91,6 +90,8 @@ before any larger paid evaluation or benchmark freeze.
 | **Shortage gaming emerges** (Y-topology, tight capacity, proportional rationing) | ✅ Supported — agents inflate orders to grab a larger rationed share |
 | **Honest signaling emerges** from selfish agents | ❌ Refuted — the cheap-talk channel is inert; the strategy lives in the order stream |
 | **Honesty-weighted rationing restores truth-telling** | ❌ Refuted — agents disengage from the channel rather than tell the truth |
+| **The Verifiers action protocol is reliable** | ✅ Preliminary support — all 180 Akash smoke decisions used clean tool calls; this is not yet a multi-seed benchmark result |
+| **The Verifiers ladder separates capabilities** | ✅ Preliminary support — the single-seed smoke score declined across the five increasingly difficult tiers |
 | **Qwen2.5-3B clears the LLM capability floor** | ❌ Not yet — parses cleanly (0% fail) but collapses to near-zero orders; move up a size |
 
 ![Order inflation vs. factory capacity](artifacts/diagnostics/shortage_gaming_inflation_vs_capacity.png)
@@ -123,13 +124,13 @@ python scripts/train_ippo.py --config experiments/regime_a_classic.yaml --seed 0
 python scripts/run_tier1_matrix.py --dry-run     # pruned cell count
 python scripts/run_tier1_matrix.py --workers 8 --n-envs 64 --skip-existing
 
-# 3. LLM capability floor — can a model even play coherently? ($0, free Colab)
+# 3. LLM capability floor — can a model even play coherently? (free Colab)
 python scripts/run_llm_episode.py --backend heuristic --cell classic   # no-model baseline
 #   full test: notebooks/colab_llm_smoke.ipynb  (Ollama + Qwen, T4 GPU)
 ```
 
 **Emergence constraints (non-negotiable):** one policy/LoRA per role, no shared
-weights or critics; rewards are strictly local costs; signaling is optional and
+weights or critics; rewards are strictly local outcomes; signaling is optional and
 unverified, honesty is *measured* — never rewarded. Regime C (shared system
 reward) exists only as a reproduction anchor.
 
