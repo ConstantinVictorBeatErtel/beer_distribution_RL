@@ -16,12 +16,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import re
 import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+# Colab T4 runs can retain large unused CUDA allocator segments after batched
+# generation.  Expandable segments reduce fragmentation; setting this before
+# importing torch is required for it to take effect.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 try:
     import torch
@@ -81,7 +87,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=20260718)
     p.add_argument("--max-new-tokens", type=int, default=32)
     p.add_argument("--prompt-max-tokens", type=int, default=4096)
-    p.add_argument("--train-minibatch", type=int, default=4)
+    p.add_argument(
+        "--train-minibatch",
+        type=int,
+        default=1,
+        help="Per-forward training batch; 1 is the safe default for a Colab T4.",
+    )
     p.add_argument("--learning-rate", type=float, default=5e-6)
     p.add_argument("--temperature", type=float, default=0.7)
     p.add_argument("--top-p", type=float, default=0.95)
@@ -414,6 +425,11 @@ def train_update(model: Any, optimizer: Any, records: list[ActionRecord], args: 
     if not records:
         return {"loss": 0.0, "trainable_actions": 0.0, "mean_advantage": 0.0}
     old = sequence_logprobs(model, records, args.train_minibatch)
+    # Batched generation and the no-grad old-policy pass can leave large
+    # reclaimable segments in the CUDA caching allocator.  Return them before
+    # constructing the backward graph, which is the peak-memory phase.
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     for record, value in zip(records, old.tolist()):
         record.old_logprob = float(value)
     trainable = [record for record in records if abs(record.advantage) > 1e-12 and record.completion_ids]
