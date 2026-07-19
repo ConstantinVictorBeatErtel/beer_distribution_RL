@@ -90,8 +90,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--train-minibatch",
         type=int,
-        default=1,
-        help="Per-forward training batch; 1 is the safe default for a Colab T4.",
+        default=2,
+        help="Per-forward training batch; 2 is conservative for a Colab T4.",
+    )
+    p.add_argument(
+        "--inference-minibatch",
+        type=int,
+        default=8,
+        help="No-grad batch for old-policy log probabilities.",
     )
     p.add_argument("--learning-rate", type=float, default=5e-6)
     p.add_argument("--temperature", type=float, default=0.7)
@@ -424,7 +430,7 @@ def train_update(model: Any, optimizer: Any, records: list[ActionRecord], args: 
         raise RuntimeError("Install torch in the Colab runtime first.")
     if not records:
         return {"loss": 0.0, "trainable_actions": 0.0, "mean_advantage": 0.0}
-    old = sequence_logprobs(model, records, args.train_minibatch)
+    old = sequence_logprobs(model, records, args.inference_minibatch)
     # Batched generation and the no-grad old-policy pass can leave large
     # reclaimable segments in the CUDA caching allocator.  Return them before
     # constructing the backward graph, which is the peak-memory phase.
