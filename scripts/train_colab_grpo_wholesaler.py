@@ -395,6 +395,27 @@ def task_lookup(tasks: list[Any]) -> dict[str, Any]:
     return {task.data.name: task for task in tasks}
 
 
+def completion_mean_logprob(
+    logits: torch.Tensor,
+    input_ids: torch.Tensor,
+    prompt_len: int,
+    completion_len: int,
+) -> torch.Tensor:
+    """Mean log probability of completion tokens without prompt-sized softmax."""
+    if completion_len == 0:
+        return logits.new_zeros(())
+    # Position t predicts input_ids[t + 1].  Slice before softmax so the
+    # temporary [sequence, vocabulary] log-probability tensor is only as long
+    # as the generated completion, not the full prompt.
+    start = prompt_len - 1
+    completion_logits = logits[start : start + completion_len].float()
+    completion_labels = input_ids[prompt_len : prompt_len + completion_len]
+    token_logp = torch.log_softmax(completion_logits, dim=-1).gather(
+        -1, completion_labels.unsqueeze(-1)
+    ).squeeze(-1)
+    return token_logp.mean()
+
+
 def sequence_logprobs(model: Any, records: list[ActionRecord], minibatch: int) -> torch.Tensor:
     if torch is None or pad_sequence is None:
         raise RuntimeError("Install torch in the Colab runtime first.")
@@ -412,16 +433,11 @@ def sequence_logprobs(model: Any, records: list[ActionRecord], minibatch: int) -
             mask[row, : len(seq)] = 1
         with torch.no_grad():
             logits = model(input_ids=ids, attention_mask=mask).logits.float()
-        log_probs = torch.log_softmax(logits[:, :-1], dim=-1)
-        labels = ids[:, 1:]
         for row, (prompt_len, completion_len) in enumerate(zip(lengths, completion_lengths)):
-            if completion_len == 0:
-                values.append(torch.tensor(0.0))
-                continue
-            token_logp = log_probs[row, prompt_len - 1 : prompt_len + completion_len - 1].gather(
-                -1, labels[row, prompt_len - 1 : prompt_len + completion_len - 1].unsqueeze(-1)
-            ).squeeze(-1)
-            values.append(token_logp.mean().cpu())
+            values.append(
+                completion_mean_logprob(logits[row], ids[row], prompt_len, completion_len)
+                .cpu()
+            )
     return torch.stack(values)
 
 
@@ -430,6 +446,8 @@ def train_update(model: Any, optimizer: Any, records: list[ActionRecord], args: 
         raise RuntimeError("Install torch in the Colab runtime first.")
     if not records:
         return {"loss": 0.0, "trainable_actions": 0.0, "mean_advantage": 0.0}
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     old = sequence_logprobs(model, records, args.inference_minibatch)
     # Batched generation and the no-grad old-policy pass can leave large
     # reclaimable segments in the CUDA caching allocator.  Return them before
@@ -454,14 +472,9 @@ def train_update(model: Any, optimizer: Any, records: list[ActionRecord], args: 
         for row, seq in enumerate(sequences):
             mask[row, : len(seq)] = 1
         logits = model(input_ids=ids, attention_mask=mask).logits.float()
-        log_probs = torch.log_softmax(logits[:, :-1], dim=-1)
-        labels = ids[:, 1:]
         current: list[torch.Tensor] = []
         for row, (prompt_len, completion_len) in enumerate(zip(lengths, completion_lengths)):
-            token_logp = log_probs[row, prompt_len - 1 : prompt_len + completion_len - 1].gather(
-                -1, labels[row, prompt_len - 1 : prompt_len + completion_len - 1].unsqueeze(-1)
-            ).squeeze(-1)
-            current.append(token_logp.mean())
+            current.append(completion_mean_logprob(logits[row], ids[row], prompt_len, completion_len))
         current_logp = torch.stack(current)
         old_logp = torch.tensor([r.old_logprob for r in batch], device=current_logp.device)
         advantages = torch.tensor([r.advantage for r in batch], device=current_logp.device)
