@@ -566,10 +566,14 @@ def main() -> None:
         )
         return
 
+    print("Loading policy model and LoRA adapter...", flush=True)
     model, tokenizer = load_policy(args)
+    print("Policy loaded.", flush=True)
+    print("Running pre-training development evaluation...", flush=True)
     pre = evaluate(model, tokenizer, train_tasks, args)
     save_json(output_dir / "eval_pre_development.json", pre)
     if args.eval_only:
+        print("Running held-out evaluation...", flush=True)
         result = evaluate(model, tokenizer, eval_tasks, args)
         save_json(output_dir / f"eval_{args.eval_split}.json", result)
         print(json.dumps(result["summary"], indent=2))
@@ -582,9 +586,11 @@ def main() -> None:
     )
     update_rows: list[dict[str, Any]] = []
     for update in range(1, args.updates + 1):
+        print(f"Update {update}/{args.updates}: collecting rollouts...", flush=True)
         runs = rollout_batch(model, tokenizer, train_tasks, args, args.group_size, sample=True)
         assign_advantages(runs)
         records = [record for run in runs for record in run.records]
+        print(f"Update {update}/{args.updates}: optimizing {len(records)} action records...", flush=True)
         train_stats = train_update(model, optimizer, records, args)
         episode_rows = [episode_summary(run) for run in runs]
         row = {
@@ -601,10 +607,12 @@ def main() -> None:
             for episode in episode_rows:
                 handle.write(json.dumps({"update": update, **episode}) + "\n")
 
+    print("Saving LoRA adapter...", flush=True)
     model.config.use_cache = True
     adapter_dir = output_dir / "adapter"
     model.save_pretrained(adapter_dir)
     tokenizer.save_pretrained(adapter_dir)
+    print("Running post-training development evaluation...", flush=True)
     post = evaluate(model, tokenizer, train_tasks, args)
     save_json(output_dir / "eval_post_development.json", post)
     print(json.dumps({"pre": pre["summary"], "post": post["summary"]}, indent=2))
